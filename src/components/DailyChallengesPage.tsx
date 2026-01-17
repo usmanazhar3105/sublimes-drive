@@ -52,11 +52,7 @@ export function DailyChallengesPage() {
     const isActive = status === 'active';
 
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <div>
         <Card className={`bg-[#1A1F2E] border-[#2A3441] hover:border-[#D4AF37]/30 transition-all ${
           isCompleted ? 'ring-2 ring-[#D4AF37]/50' : ''
         }`}>
@@ -174,7 +170,7 @@ export function DailyChallengesPage() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     );
   };
 

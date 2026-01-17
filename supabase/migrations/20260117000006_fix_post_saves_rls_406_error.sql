@@ -123,3 +123,5 @@ GRANT SELECT, INSERT, DELETE ON public.post_saves TO authenticated;
 
 -- ✅ Migration complete - post_saves RLS is fixed
 
+
+

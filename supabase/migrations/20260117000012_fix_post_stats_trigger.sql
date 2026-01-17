@@ -229,3 +229,4 @@ $$;
 
 -- ✅ Migration complete - All triggers now check if post_stats is a VIEW before inserting/updating
 
+

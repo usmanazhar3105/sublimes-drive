@@ -204,6 +204,14 @@ BEGIN
     ALTER TABLE public.daily_challenges ADD COLUMN category TEXT DEFAULT 'general';
   END IF;
 
+  -- Drop existing check constraint on category if it exists (to allow 'general')
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
+             WHERE table_schema = 'public' 
+             AND table_name = 'daily_challenges' 
+             AND constraint_name = 'daily_challenges_category_check') THEN
+    ALTER TABLE public.daily_challenges DROP CONSTRAINT daily_challenges_category_check;
+  END IF;
+
   -- If category exists but is NOT NULL and has NULLs, set default
   IF EXISTS (SELECT 1 FROM information_schema.columns 
              WHERE table_schema = 'public' 
@@ -221,6 +229,22 @@ BEGIN
                  AND table_name = 'daily_challenges' 
                  AND column_name = 'requirement_type') THEN
     ALTER TABLE public.daily_challenges ADD COLUMN requirement_type TEXT DEFAULT 'count';
+  END IF;
+
+  -- Drop existing check constraint on requirement_type if it exists (to allow 'count')
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
+             WHERE table_schema = 'public' 
+             AND table_name = 'daily_challenges' 
+             AND constraint_name = 'daily_challenges_requirement_type_check') THEN
+    ALTER TABLE public.daily_challenges DROP CONSTRAINT daily_challenges_requirement_type_check;
+  END IF;
+
+  -- Drop unique constraint on challenge_date if it exists (allows multiple challenges per day)
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
+             WHERE table_schema = 'public' 
+             AND table_name = 'daily_challenges' 
+             AND constraint_name = 'daily_challenges_challenge_date_key') THEN
+    ALTER TABLE public.daily_challenges DROP CONSTRAINT daily_challenges_challenge_date_key;
   END IF;
 
   -- If requirement_type exists but is NOT NULL and has NULLs, set default
@@ -399,6 +423,13 @@ USING (
 -- ============================================================================
 -- Insert sample challenges only if columns exist
 DO $$
+DECLARE
+  v_has_challenge_date BOOLEAN;
+  v_has_category BOOLEAN;
+  v_has_requirement_type BOOLEAN;
+  v_cols TEXT;
+  v_vals TEXT;
+  v_where_clause TEXT;
 BEGIN
   -- Only proceed if required columns exist
   IF EXISTS (SELECT 1 FROM information_schema.columns 
@@ -410,19 +441,11 @@ BEGIN
                  AND table_name = 'daily_challenges' 
                  AND column_name = 'title') THEN
     
-    -- Use dynamic SQL to handle all possible column combinations
-    DECLARE
-      v_has_challenge_date BOOLEAN;
-      v_has_category BOOLEAN;
-      v_has_requirement_type BOOLEAN;
-      v_cols TEXT;
-      v_vals TEXT;
-    BEGIN
-      -- Check which optional columns exist
-      SELECT EXISTS (SELECT 1 FROM information_schema.columns 
-                    WHERE table_schema = 'public' 
-                    AND table_name = 'daily_challenges' 
-                    AND column_name = 'challenge_date') INTO v_has_challenge_date;
+    -- Check which optional columns exist
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns 
+                  WHERE table_schema = 'public' 
+                  AND table_name = 'daily_challenges' 
+                  AND column_name = 'challenge_date') INTO v_has_challenge_date;
       
       SELECT EXISTS (SELECT 1 FROM information_schema.columns 
                     WHERE table_schema = 'public' 
@@ -459,7 +482,12 @@ BEGIN
       IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
       v_vals := v_vals || ', true, ''active''';
       
-      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''post'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+      -- Build WHERE clause for duplicate check
+      v_where_clause := 'challenge_type = ''post'' AND start_date = CURRENT_DATE';
+      IF v_has_challenge_date THEN
+        v_where_clause := v_where_clause || ' AND challenge_date = CURRENT_DATE';
+      END IF;
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE %s)', v_cols, v_vals, v_where_clause);
       
       -- Insert Social Butterfly challenge
       v_vals := '''Social Butterfly'', ''Comment on 3 different posts'', ''comment'', 3, 30, ''easy'', ''💬'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
@@ -468,7 +496,11 @@ BEGIN
       IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
       v_vals := v_vals || ', true, ''active''';
       
-      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''comment'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+      v_where_clause := 'challenge_type = ''comment'' AND start_date = CURRENT_DATE';
+      IF v_has_challenge_date THEN
+        v_where_clause := v_where_clause || ' AND challenge_date = CURRENT_DATE';
+      END IF;
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE %s)', v_cols, v_vals, v_where_clause);
       
       -- Insert Supporter challenge
       v_vals := '''Supporter'', ''Like 5 posts'', ''like'', 5, 20, ''easy'', ''❤️'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
@@ -477,7 +509,11 @@ BEGIN
       IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
       v_vals := v_vals || ', true, ''active''';
       
-      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''like'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+      v_where_clause := 'challenge_type = ''like'' AND start_date = CURRENT_DATE';
+      IF v_has_challenge_date THEN
+        v_where_clause := v_where_clause || ' AND challenge_date = CURRENT_DATE';
+      END IF;
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE %s)', v_cols, v_vals, v_where_clause);
       
       -- Insert Sharing is Caring challenge
       v_vals := '''Sharing is Caring'', ''Share 2 posts'', ''share'', 2, 25, ''easy'', ''📤'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
@@ -486,177 +522,13 @@ BEGIN
       IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
       v_vals := v_vals || ', true, ''active''';
       
-      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''share'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
-    END;
-    
-    -- Fallback: Simple INSERT if dynamic approach fails (shouldn't reach here)
-    IF FALSE THEN
-      -- This block will never execute, but kept for reference
-      IF EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_schema = 'public' 
-                 AND table_name = 'daily_challenges' 
-                 AND column_name = 'challenge_date') THEN
-        IF EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'daily_challenges' 
-                   AND column_name = 'category') THEN
-        -- Insert with both challenge_date and category
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, category, is_active, status
-        )
-        SELECT 
-          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, category, is_active, status
-        )
-        SELECT 
-          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, category, is_active, status
-        )
-        SELECT 
-          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, category, is_active, status
-        )
-        SELECT 
-          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
-      ELSE
-        -- Insert with challenge_date but no category
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, is_active, status
-        )
-        SELECT 
-          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, is_active, status
-        )
-        SELECT 
-          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, is_active, status
-        )
-        SELECT 
-          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, challenge_date, is_active, status
-        )
-        SELECT 
-          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
+      v_where_clause := 'challenge_type = ''share'' AND start_date = CURRENT_DATE';
+      IF v_has_challenge_date THEN
+        v_where_clause := v_where_clause || ' AND challenge_date = CURRENT_DATE';
       END IF;
-    ELSE
-      -- Insert without challenge_date, but check for category
-      IF EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_schema = 'public' 
-                 AND table_name = 'daily_challenges' 
-                 AND column_name = 'category') THEN
-        -- Insert with category but no challenge_date
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, category, is_active, status
-        )
-        SELECT 
-          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, category, is_active, status
-        )
-        SELECT 
-          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, category, is_active, status
-        )
-        SELECT 
-          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, category, is_active, status
-        )
-        SELECT 
-          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
-      ELSE
-        -- Insert without challenge_date or category
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, is_active, status
-        )
-        SELECT 
-          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, is_active, status
-        )
-        SELECT 
-          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, is_active, status
-        )
-        SELECT 
-          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
-        
-        INSERT INTO public.daily_challenges (
-          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-          start_date, end_date, is_active, status
-        )
-        SELECT 
-          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
-          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
-      END IF;
-    END IF;
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE %s)', v_cols, v_vals, v_where_clause);
     
-  END IF;
+    END IF; -- End of main IF (icon and title exist)
 END $$;
 
 -- ============================================================================

@@ -118,3 +118,5 @@ GRANT DELETE ON public.posts TO authenticated;
 
 -- ✅ Migration complete - Subscribers can now create posts
 
+
+

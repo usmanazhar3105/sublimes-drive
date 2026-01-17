@@ -184,3 +184,5 @@ END $$;
 
 -- ✅ Migration complete - Subscribers can now perform all basic operations
 
+
+

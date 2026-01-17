@@ -153,3 +153,5 @@ GRANT SELECT ON public.user_roles_view TO authenticated;
 
 -- ✅ Migration complete - Car owner role system is ready
 
+
+
