@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { createProfileIfNotExists } from '@/lib/profileUtils';
 
 export function useRole() {
   const [role, setRole] = useState<string | null>(null);
@@ -50,24 +51,14 @@ export function useRole() {
 
   const createProfileForUser = async (user: any) => {
     try {
-      const displayName = user.user_metadata?.full_name || 
-                         user.user_metadata?.display_name || 
-                         user.email?.split('@')[0] || 
-                         'User';
-      
-      // Try to upsert profile - ONLY id field (role assigned by database DEFAULT)
-      const { data: newProfile, error: upsertError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-        }, { onConflict: 'id' })
-        .select('role')
-        .maybeSingle();
+      // Use production-proven profile creation utility
+      // Only sends { id: user.id } - NO role field
+      const { data: newProfile, error: upsertError } = await createProfileIfNotExists(user.id);
 
       if (upsertError) {
         console.warn('Could not create profile:', upsertError.message);
-        // Still set default user role for UI to work
-        setRole('user');
+        // Still set default subscriber role for UI to work
+        setRole('subscriber');
         setIsAdmin(false);
         setIsGarageOwner(false);
       } else if (newProfile) {
@@ -75,12 +66,13 @@ export function useRole() {
         setIsAdmin(newProfile.role === 'admin' || newProfile.role === 'super-admin');
         setIsGarageOwner(newProfile.role === 'garage_owner');
       } else {
-        // Fallback
-        setRole('user');
+        // Fallback - wait for DB trigger to create profile
+        setRole('subscriber');
       }
     } catch (err) {
       console.warn('Profile creation failed:', err);
-      setRole('user');
+      // Fallback - wait for DB trigger
+      setRole('subscriber');
     }
   };
 

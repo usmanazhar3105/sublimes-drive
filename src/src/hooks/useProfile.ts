@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase/client';
 import { Profile } from './useRole';
+import { createProfileIfNotExists } from '../../lib/profileUtils';
 
 export interface XPEvent {
   id: string;
@@ -77,24 +78,30 @@ export function useProfile(userId?: string) {
           setLoading(false);
           return;
         }
-        // Profile creation - ONLY id field (role assigned by database DEFAULT)
-        const up = await supabase
-          .from('profiles')
-          .upsert({ id: targetUserId }, { onConflict: 'id' })
-          .select('*')
-          .single();
-        if (!up.error) {
-          setProfile(up.data as any);
+        // Use production-proven profile creation utility
+        // Only sends { id: user.id } - NO role field
+        const { data: newProfile, error: profileError } = await createProfileIfNotExists(targetUserId);
+        if (!profileError && newProfile) {
+          // Fetch full profile after creation
+          const { data: fullProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', targetUserId)
+            .single();
+          if (fullProfile) {
+            setProfile(fullProfile as any);
+          }
         } else {
           // DEV fallback: if RLS recursion blocks upsert, synthesize a minimal profile so UI can load
-          const errCode = (up.error as any)?.code || '';
-          const errMsg = (up.error as any)?.message || '';
+          const errCode = (profileError as any)?.code || '';
+          const errMsg = (profileError as any)?.message || '';
           if (errCode === '42P17' || errMsg.toLowerCase().includes('infinite recursion') || errMsg.toLowerCase().includes('policy')) {
+            const display = (authed.user_metadata as any)?.full_name || authed.email?.split('@')[0] || 'User';
             setProfile({
               id: targetUserId,
               email: authed.email || '',
               display_name: display,
-              role: roleFromMeta || undefined,
+              role: 'subscriber', // Default role from DB
               avatar_url: (authed.user_metadata as any)?.avatar_url || undefined,
               username: (authed.user_metadata as any)?.user_name || (authed.email?.split('@')[0]) || undefined,
             } as any);
