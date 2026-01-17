@@ -36,7 +36,7 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
     isAdmin ||
     isEditor ||
     profile?.role === 'admin' ||
-    (profile as any)?.user_role === 'admin' ||
+    (profile as any)?.role === 'admin' ||
     (profile as any)?.is_admin === true
   );
 

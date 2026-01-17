@@ -98,57 +98,32 @@ export function useRole() {
           // ignore and continue fallbacks
         }
 
-        // Try to get role from profiles table
-        const { data: profile } = await supabase
+        // Get role from profiles table (only use existing columns)
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('role, user_role, is_admin')
+          .select('role')
           .eq('id', user.id)
           .maybeSingle();
 
-        const profileRole = ((profile as any)?.role || (profile as any)?.user_role) as UserRole | undefined;
-        const derivedFromFlag = (profile as any)?.is_admin ? ('admin' as UserRole) : undefined;
-        const derivedProfileRole = (profileRole || derivedFromFlag) as UserRole | undefined;
-
-        if (derivedProfileRole) {
+        // If profile exists and has a role, use it
+        if (profile && profile.role) {
+          const profileRole = profile.role as string;
+          // Normalize role to match UserRole type
+          const normalizedRole = (['admin','editor','car_owner','garage_owner','vendor','browser'].includes(profileRole.toLowerCase()))
+            ? (profileRole.toLowerCase() as UserRole)
+            : 'browser';
+          
           if (mounted) {
-            setRole(derivedProfileRole);
+            setRole(normalizedRole);
             setLoading(false);
           }
           return;
         }
 
-        // Fallback to user_profiles table (support both id=auth uid and auth_user_id=auth uid)
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('role, is_admin, auth_user_id')
-          .or(`id.eq.${user.id},auth_user_id.eq.${user.id}`)
-          .maybeSingle();
-
-        const upRoleRaw = (userProfile as any)?.role as string | undefined;
-        const upIsAdminFlag = !!(userProfile as any)?.is_admin;
-        const normalizedUpRole = (['admin','editor','car_owner','garage_owner','vendor','browser'].includes((upRoleRaw || '').toLowerCase()))
-          ? (upRoleRaw as UserRole)
-          : undefined;
-
-        if (upIsAdminFlag || normalizedUpRole === 'admin' || normalizedUpRole === 'editor') {
-          if (mounted) {
-            setRole(upIsAdminFlag ? 'admin' : (normalizedUpRole as UserRole));
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Fallback to user_roles table
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .or(`user_id.eq.${user.id},uid.eq.${user.id}`)
-          .limit(1);
-
-        const fallbackRole = ((userRoles as any)?.[0]?.role as UserRole) || 'browser';
-        
+        // If profile doesn't exist or has no role, default to browser
+        // (Profile creation is handled by DB trigger)
         if (mounted) {
-          setRole(fallbackRole);
+          setRole('browser');
           setLoading(false);
         }
       } catch (error) {

@@ -124,14 +124,13 @@ export function useVendorApplications() {
 
       if (updateError) throw updateError;
 
-      // Grant vendor role
+      // Grant vendor role (update profiles table instead of user_roles)
       const { error: roleError } = await supabase
-        .from('user_roles')
-        .upsert({
-          user_id: userId,
-          role: 'vendor',
-          status: 'approved',
-          approved_at: new Date().toISOString()
+        .from('profiles')
+        .update({
+          role: 'vendor'
+        })
+        .eq('id', userId)
         });
 
       if (roleError) throw roleError;

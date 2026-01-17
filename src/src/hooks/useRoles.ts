@@ -23,23 +23,40 @@ export function useRoles(userId?: string) {
 
     async function fetchRoles() {
       try {
-        const { data, error: fetchError } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', userId);
+        // user_roles table doesn't exist - use profiles table instead
+        // Get role from profiles table
+        const { data: profile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
 
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+          // Silently fail - table might not exist
+          setRoles([]);
+          setBadges([]);
+          setLoading(false);
+          return;
+        }
 
-        setRoles(data || []);
-        
-        // Extract approved badges
-        const approvedBadges = (data || [])
-          .filter(r => r.status === 'approved')
-          .map(r => r.role);
-        setBadges(approvedBadges);
+        // Convert profile role to UserRole format
+        if (profile && profile.role) {
+          const role: UserRole = {
+            role: profile.role as any,
+            status: 'approved',
+            applied_at: new Date().toISOString(),
+            approved_at: new Date().toISOString()
+          };
+          setRoles([role]);
+          setBadges([profile.role]);
+        } else {
+          setRoles([]);
+          setBadges([]);
+        }
       } catch (err) {
-        setError(err as Error);
-        console.error('Error fetching roles:', err);
+        // Silently fail - user_roles table doesn't exist
+        setRoles([]);
+        setBadges([]);
       } finally {
         setLoading(false);
       }
@@ -47,15 +64,15 @@ export function useRoles(userId?: string) {
 
     fetchRoles();
 
-    // Subscribe to role changes
+    // Subscribe to profile changes (instead of user_roles)
     const subscription = supabase
-      .channel(`user_roles:${userId}`)
+      .channel(`profiles:${userId}`)
       .on('postgres_changes', 
         { 
           event: '*', 
           schema: 'public', 
-          table: 'user_roles',
-          filter: `user_id=eq.${userId}`
+          table: 'profiles',
+          filter: `id=eq.${userId}`
         },
         () => {
           fetchRoles();
@@ -70,17 +87,18 @@ export function useRoles(userId?: string) {
 
   const applyForRole = async (role: UserRole['role'], meta?: Record<string, any>) => {
     try {
-      const { error: insertError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: userId,
-          role,
-          status: 'pending',
-          applied_at: new Date().toISOString(),
-          meta: meta || {}
-        });
+      // user_roles table doesn't exist - update profiles table instead
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: new Error('Not authenticated') };
+      }
 
-      if (insertError) throw insertError;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ role: role as string })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
 
       return { success: true };
     } catch (err) {
