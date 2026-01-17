@@ -177,6 +177,44 @@ BEGIN
     ALTER TABLE public.daily_challenges ADD COLUMN difficulty TEXT DEFAULT 'easy';
   END IF;
 
+  -- Add challenge_date if missing (might be required by existing schema)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'daily_challenges' 
+                 AND column_name = 'challenge_date') THEN
+    ALTER TABLE public.daily_challenges ADD COLUMN challenge_date DATE DEFAULT CURRENT_DATE;
+  END IF;
+
+  -- If challenge_date exists but is NOT NULL and has NULLs, set default
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_schema = 'public' 
+             AND table_name = 'daily_challenges' 
+             AND column_name = 'challenge_date'
+             AND is_nullable = 'NO') THEN
+    UPDATE public.daily_challenges 
+    SET challenge_date = COALESCE(challenge_date, CURRENT_DATE, start_date, active_date)
+    WHERE challenge_date IS NULL;
+  END IF;
+
+  -- Add category if missing (might be required by existing schema)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'daily_challenges' 
+                 AND column_name = 'category') THEN
+    ALTER TABLE public.daily_challenges ADD COLUMN category TEXT DEFAULT 'general';
+  END IF;
+
+  -- If category exists but is NOT NULL and has NULLs, set default
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_schema = 'public' 
+             AND table_name = 'daily_challenges' 
+             AND column_name = 'category'
+             AND is_nullable = 'NO') THEN
+    UPDATE public.daily_challenges 
+    SET category = COALESCE(category, 'general', challenge_type)
+    WHERE category IS NULL;
+  END IF;
+
   -- Set defaults for NULL values
   UPDATE public.daily_challenges 
   SET 
@@ -353,45 +391,172 @@ BEGIN
                  AND table_name = 'daily_challenges' 
                  AND column_name = 'title') THEN
     
-    -- Insert First Post challenge
-    INSERT INTO public.daily_challenges (
-      title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-      start_date, end_date, is_active, status
-    )
-    SELECT 
-      'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
-      CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-    WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
-    
-    -- Insert Social Butterfly challenge
-    INSERT INTO public.daily_challenges (
-      title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-      start_date, end_date, is_active, status
-    )
-    SELECT 
-      'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
-      CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-    WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
-    
-    -- Insert Supporter challenge
-    INSERT INTO public.daily_challenges (
-      title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-      start_date, end_date, is_active, status
-    )
-    SELECT 
-      'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
-      CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-    WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
-    
-    -- Insert Sharing is Caring challenge
-    INSERT INTO public.daily_challenges (
-      title, description, challenge_type, target_count, xp_reward, difficulty, icon,
-      start_date, end_date, is_active, status
-    )
-    SELECT 
-      'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
-      CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
-    WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
+    -- Check if challenge_date column exists and include it in INSERT
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_schema = 'public' 
+               AND table_name = 'daily_challenges' 
+               AND column_name = 'challenge_date') THEN
+      -- Insert with challenge_date and category (if they exist)
+      -- Check if category also exists
+      IF EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'daily_challenges' 
+                 AND column_name = 'category') THEN
+        -- Insert with both challenge_date and category
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, category, is_active, status
+        )
+        SELECT 
+          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, category, is_active, status
+        )
+        SELECT 
+          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, category, is_active, status
+        )
+        SELECT 
+          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, category, is_active, status
+        )
+        SELECT 
+          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
+      ELSE
+        -- Insert with challenge_date but no category
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, is_active, status
+        )
+        SELECT 
+          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, is_active, status
+        )
+        SELECT 
+          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, is_active, status
+        )
+        SELECT 
+          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, challenge_date, is_active, status
+        )
+        SELECT 
+          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE, true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
+      END IF;
+    ELSE
+      -- Insert without challenge_date, but check for category
+      IF EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'daily_challenges' 
+                 AND column_name = 'category') THEN
+        -- Insert with category but no challenge_date
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, category, is_active, status
+        )
+        SELECT 
+          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, category, is_active, status
+        )
+        SELECT 
+          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, category, is_active, status
+        )
+        SELECT 
+          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, category, is_active, status
+        )
+        SELECT 
+          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', 'general', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
+      ELSE
+        -- Insert without challenge_date or category
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, is_active, status
+        )
+        SELECT 
+          'First Post', 'Create your first post in the community', 'post', 1, 25, 'easy', '📝',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'post' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, is_active, status
+        )
+        SELECT 
+          'Social Butterfly', 'Comment on 3 different posts', 'comment', 3, 30, 'easy', '💬',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'comment' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, is_active, status
+        )
+        SELECT 
+          'Supporter', 'Like 5 posts', 'like', 5, 20, 'easy', '❤️',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'like' AND start_date = CURRENT_DATE);
+        
+        INSERT INTO public.daily_challenges (
+          title, description, challenge_type, target_count, xp_reward, difficulty, icon,
+          start_date, end_date, is_active, status
+        )
+        SELECT 
+          'Sharing is Caring', 'Share 2 posts', 'share', 2, 25, 'easy', '📤',
+          CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day', true, 'active'
+        WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = 'share' AND start_date = CURRENT_DATE);
+      END IF;
+    END IF;
     
   END IF;
 END $$;
