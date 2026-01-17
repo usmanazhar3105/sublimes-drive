@@ -197,12 +197,82 @@ CREATE TABLE IF NOT EXISTS public.user_daily_progress (
   UNIQUE(user_id, challenge_id)
 );
 
--- Create indexes
+-- Add missing columns to user_daily_progress if table already exists
+DO $$ 
+BEGIN
+  -- Add progress if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'progress') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN progress INTEGER DEFAULT 0;
+  END IF;
+
+  -- Add completed if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'completed') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN completed BOOLEAN DEFAULT false;
+  END IF;
+
+  -- Add claimed if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'claimed') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN claimed BOOLEAN DEFAULT false;
+  END IF;
+
+  -- Add started_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'started_at') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN started_at TIMESTAMPTZ DEFAULT NOW();
+  END IF;
+
+  -- Add completed_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'completed_at') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN completed_at TIMESTAMPTZ;
+  END IF;
+
+  -- Add claimed_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'claimed_at') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN claimed_at TIMESTAMPTZ;
+  END IF;
+
+  -- Add updated_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'user_daily_progress' 
+                 AND column_name = 'updated_at') THEN
+    ALTER TABLE public.user_daily_progress ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+  END IF;
+END $$;
+
+-- Create indexes (after ensuring columns exist)
 CREATE INDEX IF NOT EXISTS idx_daily_challenges_active ON public.daily_challenges(is_active, start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_daily_challenges_type ON public.daily_challenges(challenge_type);
 CREATE INDEX IF NOT EXISTS idx_user_daily_progress_user ON public.user_daily_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_daily_progress_challenge ON public.user_daily_progress(challenge_id);
-CREATE INDEX IF NOT EXISTS idx_user_daily_progress_completed ON public.user_daily_progress(user_id, completed);
+
+-- Only create completed index if column exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_schema = 'public' 
+             AND table_name = 'user_daily_progress' 
+             AND column_name = 'completed') THEN
+    CREATE INDEX IF NOT EXISTS idx_user_daily_progress_completed ON public.user_daily_progress(user_id, completed);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- RLS POLICIES
