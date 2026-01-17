@@ -89,7 +89,7 @@ export function PostCard({
 
   // Load comments from database when showing comments
   useEffect(() => {
-    if (showComments && comments.length === 0) {
+    if (showComments) {
       loadComments();
     }
   }, [showComments]);
@@ -189,17 +189,9 @@ export function PostCard({
     setShowMediaViewer(true);
   };
 
-  const handleAddComment = (postId: string, comment: any) => {
-    const newComment = {
-      ...comment,
-      id: Date.now().toString(),
-      timestamp: 'now',
-      likes: 0,
-      isLiked: false,
-      replies: []
-    };
-    setComments(prev => [newComment, ...prev]);
-    toast.success('Comment added!');
+  const handleAddComment = async (postId: string, comment: any) => {
+    // Refresh comments from backend to get the actual saved comment
+    await loadComments();
   };
 
   const handleLikeComment = (commentId: string) => {
@@ -215,26 +207,9 @@ export function PostCard({
     }));
   };
 
-  const handleReplyToComment = (commentId: string, reply: any) => {
-    const newReply = {
-      ...reply,
-      id: Date.now().toString(),
-      timestamp: 'now',
-      likes: 0,
-      isLiked: false,
-      replies: []
-    };
-    
-    setComments(prev => prev.map(comment => {
-      if (comment.id === commentId) {
-        return {
-          ...comment,
-          replies: [...comment.replies, newReply]
-        };
-      }
-      return comment;
-    }));
-    toast.success('Reply added!');
+  const handleReplyToComment = async (commentId: string, reply: any) => {
+    // Refresh comments from backend to get the actual saved reply
+    await loadComments();
   };
 
   const handleDeleteComment = (commentId: string) => {

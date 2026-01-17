@@ -68,8 +68,8 @@ export function useCommunityInteractions() {
       }
       
       toast.success(parentId ? 'Reply added!' : 'Comment added!');
-      // Return the created comment from the response
-      return data?.comment || { id: data?.comment?.id, success: true };
+      // Return the comment ID from the response
+      return data?.comment?.id || data?.comment_id || null;
     } catch (error: any) {
       // Fallback: try Edge Function
       try {
@@ -130,6 +130,7 @@ export function useCommunityInteractions() {
       if (!isUuid(postId)) return [] as any[];
       
       // ✅ Use direct Supabase query for reliability
+      // Get all comments for this post (including replies)
       const { data: comments, error: queryError } = await supabase
         .from('comments')
         .select(`
@@ -138,7 +139,8 @@ export function useCommunityInteractions() {
             id,
             display_name,
             avatar_url,
-            username
+            username,
+            role
           )
         `)
         .eq('post_id', postId)
@@ -151,17 +153,34 @@ export function useCommunityInteractions() {
         return (data as any)?.comments || [];
       }
       
-      // Enrich comments with user data
-      const enriched = (comments || []).map((c: any) => ({
-        ...c,
-        content: c.body || c.content || '',
-        body: c.body || c.content || '',
-        user: c.profiles ? {
-          display_name: c.profiles.display_name,
-          avatar_url: c.profiles.avatar_url,
-          username: c.profiles.username
-        } : {}
-      }));
+      // Transform comments to match CommentSystem format
+      const enriched = (comments || []).map((c: any) => {
+        const profile = c.profiles || {};
+        const role = profile.role || 'car-owner';
+        // Map role to CommentSystem format
+        const mappedRole = role === 'car_owner' ? 'car-owner' : 
+                          role === 'garage_owner' ? 'garage-owner' : 
+                          role as 'admin' | 'editor' | 'car-owner' | 'garage-owner' | 'browser';
+        
+        return {
+          id: c.id,
+          user: {
+            name: profile.display_name || 'User',
+            username: profile.username || `user_${c.user_id?.slice(0, 8)}`,
+            avatar: profile.avatar_url || '',
+            role: mappedRole,
+            verified: false, // TODO: Add verified field to profiles if needed
+            isAnonymous: false
+          },
+          content: {
+            text: c.body || c.content || '',
+          },
+          timestamp: c.created_at ? new Date(c.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+          likes: c.like_count || 0,
+          isLiked: false, // TODO: Check if current user liked this comment
+          replies: [] // TODO: Load replies separately if needed
+        };
+      });
       
       return enriched;
     } catch (error: any) {

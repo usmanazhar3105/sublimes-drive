@@ -149,27 +149,14 @@ export function CommentSystem({
     );
 
     if (commentId) {
-      const id = typeof commentId === 'string' ? commentId : (crypto && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`);
-      const newC: Comment = {
-        id,
-        user: currentUser,
-        content: {
-          text: newComment.trim() || undefined,
-          images: uploadedImages.length > 0 ? uploadedImages : undefined,
-          gif: selectedGif || undefined,
-        },
-        timestamp: new Date().toLocaleDateString(),
-        likes: 0,
-        isLiked: false,
-        replies: [],
-      };
-      setDisplayComments(prev => [...prev, newC]);
-      onAddComment(postId, newC);
-      
-      // Reset form
+      // Reset form immediately for better UX
       setNewComment('');
       setUploadedImages([]);
       setSelectedGif(null);
+      
+      // Trigger parent to refresh comments from backend
+      // The parent's handleAddComment will refresh the comments list
+      onAddComment(postId, {} as any);
     }
   };
 
@@ -185,20 +172,13 @@ export function CommentSystem({
     );
 
     if (replyId) {
-      const id = typeof replyId === 'string' ? replyId : (crypto && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`);
-      const reply: Comment = {
-        id,
-        user: currentUser,
-        content: { text: replyText.trim() },
-        timestamp: new Date().toLocaleDateString(),
-        likes: 0,
-        isLiked: false,
-        replies: [],
-      };
-      setDisplayComments(prev => prev.map(c => c.id === commentId ? { ...c, replies: [...(c.replies || []), reply] } : c));
-      onReplyToComment(commentId, reply);
+      // Reset form immediately
       setReplyText('');
       setReplyingTo(null);
+      
+      // Trigger parent to refresh comments from backend
+      // The parent's handleReplyToComment will refresh the comments list
+      onReplyToComment(commentId, {} as any);
     }
   };
 
