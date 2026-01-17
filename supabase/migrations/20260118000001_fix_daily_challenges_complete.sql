@@ -215,6 +215,25 @@ BEGIN
     WHERE category IS NULL;
   END IF;
 
+  -- Add requirement_type if missing (might be required by existing schema)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_schema = 'public' 
+                 AND table_name = 'daily_challenges' 
+                 AND column_name = 'requirement_type') THEN
+    ALTER TABLE public.daily_challenges ADD COLUMN requirement_type TEXT DEFAULT 'count';
+  END IF;
+
+  -- If requirement_type exists but is NOT NULL and has NULLs, set default
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_schema = 'public' 
+             AND table_name = 'daily_challenges' 
+             AND column_name = 'requirement_type'
+             AND is_nullable = 'NO') THEN
+    UPDATE public.daily_challenges 
+    SET requirement_type = COALESCE(requirement_type, 'count', challenge_type)
+    WHERE requirement_type IS NULL;
+  END IF;
+
   -- Set defaults for NULL values
   UPDATE public.daily_challenges 
   SET 
@@ -391,17 +410,96 @@ BEGIN
                  AND table_name = 'daily_challenges' 
                  AND column_name = 'title') THEN
     
-    -- Check if challenge_date column exists and include it in INSERT
-    IF EXISTS (SELECT 1 FROM information_schema.columns 
-               WHERE table_schema = 'public' 
-               AND table_name = 'daily_challenges' 
-               AND column_name = 'challenge_date') THEN
-      -- Insert with challenge_date and category (if they exist)
-      -- Check if category also exists
+    -- Use dynamic SQL to handle all possible column combinations
+    DECLARE
+      v_has_challenge_date BOOLEAN;
+      v_has_category BOOLEAN;
+      v_has_requirement_type BOOLEAN;
+      v_cols TEXT;
+      v_vals TEXT;
+    BEGIN
+      -- Check which optional columns exist
+      SELECT EXISTS (SELECT 1 FROM information_schema.columns 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'daily_challenges' 
+                    AND column_name = 'challenge_date') INTO v_has_challenge_date;
+      
+      SELECT EXISTS (SELECT 1 FROM information_schema.columns 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'daily_challenges' 
+                    AND column_name = 'category') INTO v_has_category;
+      
+      SELECT EXISTS (SELECT 1 FROM information_schema.columns 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'daily_challenges' 
+                    AND column_name = 'requirement_type') INTO v_has_requirement_type;
+      
+      -- Build base column list
+      v_cols := 'title, description, challenge_type, target_count, xp_reward, difficulty, icon, start_date, end_date';
+      
+      -- Add optional columns
+      IF v_has_challenge_date THEN
+        v_cols := v_cols || ', challenge_date';
+      END IF;
+      
+      IF v_has_category THEN
+        v_cols := v_cols || ', category';
+      END IF;
+      
+      IF v_has_requirement_type THEN
+        v_cols := v_cols || ', requirement_type';
+      END IF;
+      
+      v_cols := v_cols || ', is_active, status';
+      
+      -- Insert First Post challenge
+      v_vals := '''First Post'', ''Create your first post in the community'', ''post'', 1, 25, ''easy'', ''📝'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
+      IF v_has_challenge_date THEN v_vals := v_vals || ', CURRENT_DATE'; END IF;
+      IF v_has_category THEN v_vals := v_vals || ', ''general'''; END IF;
+      IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
+      v_vals := v_vals || ', true, ''active''';
+      
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''post'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+      
+      -- Insert Social Butterfly challenge
+      v_vals := '''Social Butterfly'', ''Comment on 3 different posts'', ''comment'', 3, 30, ''easy'', ''💬'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
+      IF v_has_challenge_date THEN v_vals := v_vals || ', CURRENT_DATE'; END IF;
+      IF v_has_category THEN v_vals := v_vals || ', ''general'''; END IF;
+      IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
+      v_vals := v_vals || ', true, ''active''';
+      
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''comment'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+      
+      -- Insert Supporter challenge
+      v_vals := '''Supporter'', ''Like 5 posts'', ''like'', 5, 20, ''easy'', ''❤️'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
+      IF v_has_challenge_date THEN v_vals := v_vals || ', CURRENT_DATE'; END IF;
+      IF v_has_category THEN v_vals := v_vals || ', ''general'''; END IF;
+      IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
+      v_vals := v_vals || ', true, ''active''';
+      
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''like'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+      
+      -- Insert Sharing is Caring challenge
+      v_vals := '''Sharing is Caring'', ''Share 2 posts'', ''share'', 2, 25, ''easy'', ''📤'', CURRENT_DATE, CURRENT_DATE + INTERVAL ''1 day''';
+      IF v_has_challenge_date THEN v_vals := v_vals || ', CURRENT_DATE'; END IF;
+      IF v_has_category THEN v_vals := v_vals || ', ''general'''; END IF;
+      IF v_has_requirement_type THEN v_vals := v_vals || ', ''count'''; END IF;
+      v_vals := v_vals || ', true, ''active''';
+      
+      EXECUTE format('INSERT INTO public.daily_challenges (%s) SELECT %s WHERE NOT EXISTS (SELECT 1 FROM public.daily_challenges WHERE challenge_type = ''share'' AND start_date = CURRENT_DATE)', v_cols, v_vals);
+    END;
+    
+    -- Fallback: Simple INSERT if dynamic approach fails (shouldn't reach here)
+    IF FALSE THEN
+      -- This block will never execute, but kept for reference
       IF EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_schema = 'public' 
                  AND table_name = 'daily_challenges' 
-                 AND column_name = 'category') THEN
+                 AND column_name = 'challenge_date') THEN
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_schema = 'public' 
+                   AND table_name = 'daily_challenges' 
+                   AND column_name = 'category') THEN
         -- Insert with both challenge_date and category
         INSERT INTO public.daily_challenges (
           title, description, challenge_type, target_count, xp_reward, difficulty, icon,
