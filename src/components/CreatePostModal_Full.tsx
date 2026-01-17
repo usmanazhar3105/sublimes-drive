@@ -354,24 +354,27 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
       // Prepare post data for API
       const postContent = content.trim() || pollQuestion.trim();
       
+      // Ensure title is never null or empty - use content preview if title is empty
+      const postTitle = title.trim() || content.trim().substring(0, 50) || pollQuestion.trim().substring(0, 50) || 'Untitled Post';
+      
       const postPayload = {
-        title: title.trim() || 'Untitled Post',
+        title: postTitle, // Always ensure title is set
         content: postContent || '[Image Post]',
-        images: uploadedMediaUrls,
-        tags: tags,
+        images: uploadedMediaUrls || [],
+        tags: tags || [],
         location: location.trim() || undefined,
         car_brand: (carBrand === 'Other' ? customBrand.trim() : carBrand) || undefined,
         car_model: (carModel === 'Other' ? customModel.trim() : carModel) || undefined,
         car_brand_other: carBrand === 'Other' ? customBrand.trim() : undefined,
         car_model_other: carModel === 'Other' ? customModel.trim() : undefined,
-        urgency_level: urgencyLevel,
-        is_anonymous: postAsAnonymous,
-        post_type: postType,
+        urgency_level: urgencyLevel || 'normal',
+        is_anonymous: postAsAnonymous || false,
+        post_type: postType || 'regular',
         poll_data: postType === 'poll' ? {
           question: pollQuestion,
           options: pollOptions.filter(opt => opt.text.trim()).map(opt => opt.text),
-          duration_hours: parseInt(pollDuration),
-          allow_multiple: allowMultipleChoice
+          duration_hours: parseInt(pollDuration) || 24,
+          allow_multiple: allowMultipleChoice || false
         } : undefined
       };
 
@@ -389,18 +392,21 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
         try {
           const urgencyRaw = (urgencyLevel || '').toLowerCase();
           const urgency = urgencyRaw === 'urgent' ? 'urgent' : (urgencyRaw === 'important' || urgencyRaw === 'high') ? 'high' : (urgencyRaw === 'medium') ? 'medium' : (urgencyRaw === 'normal' || urgencyRaw === 'low') ? 'low' : null;
+          // Ensure title is never null or empty
+          const postTitle = title.trim() || content.trim().substring(0, 50) || 'Untitled Post';
+          
           const directPayload: any = {
             user_id: session.user.id,
-            title: title.trim() || 'Untitled Post',
-            content: postContent,
-            body: postContent,
-            images: uploadedMediaUrls,
-            media: uploadedMedia,
-            tags,
+            title: postTitle, // Always ensure title is set
+            content: postContent || '[No content]',
+            body: postContent || '[No content]',
+            images: uploadedMediaUrls || [],
+            media: uploadedMedia || [],
+            tags: tags || [],
             location: location.trim() || null,
             car_brand: (carBrand === 'Other' ? customBrand.trim() : carBrand) || null,
             car_model: (carModel === 'Other' ? customModel.trim() : carModel) || null,
-            urgency,
+            urgency: urgency || 'normal',
             status: 'approved',
             is_anonymous: !!postAsAnonymous,
             created_at: new Date().toISOString(),
@@ -411,11 +417,12 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
           console.log('✅ Post created via direct insert:', createdPostId);
         } catch (directErr: any) {
           // Fallback 2: RPC minimal create
+          const rpcTitle = title.trim() || content.trim().substring(0, 50) || pollQuestion.trim().substring(0, 50) || 'Untitled Post';
           const { data: postId, error: rpcError } = await supabase.rpc('fn_create_post', {
-            p_title: title.trim() || 'Untitled Post',
+            p_title: rpcTitle,
             p_body: (content || pollQuestion || '').trim() || '[Image Post]',
             p_community_id: null,
-            p_media: uploadedMedia
+            p_media: uploadedMedia || []
           });
           if (rpcError) {
             toast.error('Failed to create post: ' + (apiErr?.message || directErr?.message || rpcError.message));
