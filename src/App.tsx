@@ -470,6 +470,7 @@ export default function App() {
   // Track page views
   useEffect(() => {
     trackPageView(`/${currentPage}`);
+    console.log('📱 Rendering page:', currentPage);
   }, [currentPage]);
 
   // E2E harness: DISABLED due to schema cache issues
@@ -812,9 +813,6 @@ export default function App() {
       </>
     );
   }
-
-  // Log render attempt
-  console.log('📱 Rendering page:', currentPage);
   
   return (
     <div className="min-h-screen bg-background text-foreground">
