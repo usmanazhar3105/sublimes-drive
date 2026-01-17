@@ -115,10 +115,14 @@ export function CreateMeetupModal({ isOpen, onClose, onCreate }: CreateMeetupMod
       }
 
       // Create event row
+      const fullAddress = meetupData.location ? `${meetupData.emirate ? meetupData.emirate + ' - ' : ''}${meetupData.location}` : '';
       const created = await createEvent({
         title: meetupData.title,
         description: meetupData.description,
-        address: meetupData.location ? `${meetupData.emirate ? meetupData.emirate + ' - ' : ''}${meetupData.location}` : null as any,
+        event_type: 'meetup',
+        location: fullAddress, // Required NOT NULL field
+        address: fullAddress, // New address field
+        start_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now for instant meetups
         cover_image_url: coverUrl,
         is_active: true,
       } as any);

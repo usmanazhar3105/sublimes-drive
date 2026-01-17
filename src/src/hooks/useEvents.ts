@@ -92,14 +92,23 @@ export function useEvents(initial?: {
     createEvent: async (eventData: Partial<Event>) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Must be logged in to create an event');
+      
+      // Ensure required fields are provided
+      const locationValue = (eventData as any).location ?? (eventData as any).address;
+      if (!locationValue || locationValue.trim() === '') {
+        throw new Error('Location is required for event creation');
+      }
+
       const payload: any = {
         creator_id: user.user.id,
         title: eventData.title,
         description: eventData.description ?? null,
-        start_time: (eventData as any).start_time,
+        event_type: (eventData as any).event_type ?? 'meetup',
+        location: locationValue,
+        address: (eventData as any).address ?? null,
+        start_time: (eventData as any).start_time ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Default to 1 hour from now
         end_time: (eventData as any).end_time ?? null,
         location_id: (eventData as any).location_id ?? null,
-        address: (eventData as any).address ?? null,
         cover_image_url: (eventData as any).cover_image_url ?? null,
         is_featured: !!(eventData as any).is_featured,
         is_active: (eventData as any).is_active ?? true,
@@ -227,14 +236,22 @@ export function useCreateEvent() {
         throw new Error('Must be logged in to create an event');
       }
 
+      // Ensure required fields are provided
+      const locationValue = (eventData as any).location ?? (eventData as any).address;
+      if (!locationValue || locationValue.trim() === '') {
+        throw new Error('Location is required for event creation');
+      }
+
       const payload: any = {
         creator_id: user.user.id,
         title: eventData.title,
         description: eventData.description ?? null,
-        start_time: (eventData as any).start_time,
+        event_type: (eventData as any).event_type ?? 'meetup',
+        location: locationValue,
+        address: (eventData as any).address ?? null,
+        start_time: (eventData as any).start_time ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Default to 1 hour from now
         end_time: (eventData as any).end_time ?? null,
         location_id: (eventData as any).location_id ?? null,
-        address: (eventData as any).address ?? null,
         cover_image_url: (eventData as any).cover_image_url ?? null,
         is_featured: !!(eventData as any).is_featured,
         is_active: (eventData as any).is_active ?? true,
