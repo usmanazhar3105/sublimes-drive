@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-modules/
+# modules/ - Commented out to allow src/modules/ directory
 /.pnp
 .pnp.js
 

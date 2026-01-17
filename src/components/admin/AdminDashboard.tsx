@@ -39,7 +39,7 @@ import { useRole } from '../../src/hooks';
 import { LogOut, ArrowLeft, Bell, Search, User } from 'lucide-react';
 import { Input } from '../ui/input';
 // ✅ Freya AI Admin
-import { AdminFreyaEnhanced } from '@/modules/freya/AdminFreyaEnhanced';
+import { AdminFreyaEnhanced } from '../../modules/freya/AdminFreyaEnhanced';
 
 interface AdminDashboardProps {
   onExitAdmin: () => void;
