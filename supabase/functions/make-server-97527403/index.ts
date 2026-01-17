@@ -646,6 +646,8 @@ app.post('/posts', async (c) => {
     });
     
     if (rpcError) {
+      // Log the RPC error for debugging
+      console.error('RPC fn_create_post error:', rpcError);
       // Fallback: try direct insert (but skip post_stats)
       try {
         const payload = {
