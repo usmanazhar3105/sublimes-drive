@@ -130,8 +130,7 @@ export function useVendorApplications() {
         .update({
           role: 'vendor'
         })
-        .eq('id', userId)
-        });
+        .eq('id', userId);
 
       if (roleError) throw roleError;
 
