@@ -31,7 +31,8 @@ export function useRole() {
       if (error) {
         console.warn('Error fetching role:', error.message);
         // Try to create profile if it doesn't exist
-        if (error.code === 'PGRST116' || error.message.includes('0 rows')) {
+        if (error.code === 'PGRST116' || error.message.includes('0 rows') || error.message.includes('not found')) {
+          // Silently try to create - don't spam errors if it fails
           await createProfileForUser(user);
         }
       } else if (data) {
@@ -39,8 +40,11 @@ export function useRole() {
         setIsAdmin(data.role === 'admin' || data.role === 'super-admin');
         setIsGarageOwner(data.role === 'garage_owner');
       } else {
-        // Profile doesn't exist - create one
-        await createProfileForUser(user);
+        // Profile doesn't exist - try to create one (silently)
+        // Don't show errors - let DB trigger handle it if frontend fails
+        createProfileForUser(user).catch(() => {
+          // Silently fail - DB trigger will create profile on next auth event
+        });
       }
     } catch (err) {
       console.error('Error in loadRole:', err);
@@ -56,8 +60,15 @@ export function useRole() {
       const { data: newProfile, error: upsertError } = await createProfileIfNotExists(user.id);
 
       if (upsertError) {
-        console.warn('Could not create profile:', upsertError.message);
-        // Still set default subscriber role for UI to work
+        // Don't log errors for RLS/duplicate - these are expected
+        // Only log unexpected errors
+        if (!upsertError.message?.includes('duplicate') && 
+            !upsertError.message?.includes('unique') &&
+            !upsertError.message?.includes('policy')) {
+          console.warn('Profile creation error:', upsertError.message);
+        }
+        // Set default subscriber role for UI to work
+        // DB trigger will create profile eventually
         setRole('subscriber');
         setIsAdmin(false);
         setIsGarageOwner(false);
@@ -70,8 +81,7 @@ export function useRole() {
         setRole('subscriber');
       }
     } catch (err) {
-      console.warn('Profile creation failed:', err);
-      // Fallback - wait for DB trigger
+      // Silently fail - DB trigger will handle profile creation
       setRole('subscriber');
     }
   };

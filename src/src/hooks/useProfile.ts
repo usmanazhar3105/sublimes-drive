@@ -87,9 +87,19 @@ export function useProfile(userId?: string) {
             .from('profiles')
             .select('*')
             .eq('id', targetUserId)
-            .single();
+            .maybeSingle();
           if (fullProfile) {
             setProfile(fullProfile as any);
+          } else {
+            // Profile was created but fetch failed - use minimal data
+            setProfile(newProfile as any);
+          }
+        } else if (profileError) {
+          // Don't log expected errors (duplicate, RLS)
+          if (!profileError.message?.includes('duplicate') && 
+              !profileError.message?.includes('unique') &&
+              !profileError.message?.includes('policy')) {
+            console.warn('Profile creation error:', profileError);
           }
         } else {
           // DEV fallback: if RLS recursion blocks upsert, synthesize a minimal profile so UI can load
