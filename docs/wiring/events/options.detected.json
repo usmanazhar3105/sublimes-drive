@@ -1,0 +1,447 @@
+{
+  "source": "Master Prompt Specification + Typical Events UI Patterns",
+  "generated_at": "2025-11-05T04:50:00Z",
+  "note": "Screenshots not provided - using comprehensive specification from prompt",
+  "detected_options": [
+    {
+      "option_id": "events.nav.tab",
+      "surface": "User",
+      "description": "Main events navigation tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "events.search.input",
+      "surface": "User",
+      "description": "Search events by title/description",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "events.filters.category",
+      "surface": "User",
+      "description": "Filter by event category",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "events.filters.date_today",
+      "surface": "User",
+      "description": "Show only today's events",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "events.filters.this_weekend",
+      "surface": "User",
+      "description": "Show only weekend events",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "events.filters.price_min",
+      "surface": "User",
+      "description": "Minimum price filter",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "events.filters.price_max",
+      "surface": "User",
+      "description": "Maximum price filter",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "events.filters.free_only",
+      "surface": "User",
+      "description": "Show only free events",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "events.filters.online_only",
+      "surface": "User",
+      "description": "Show only online events",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "events.filters.inperson_only",
+      "surface": "User",
+      "description": "Show only in-person events",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "events.filters.city",
+      "surface": "User",
+      "description": "Filter by city",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "events.filters.radius_km",
+      "surface": "User",
+      "description": "Radius filter in kilometers",
+      "ui_element": "slider",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "events.filters.host_verified",
+      "surface": "User",
+      "description": "Show only verified hosts",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "events.sort.soonest",
+      "surface": "User",
+      "description": "Sort by starting soon",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "events.sort.distance",
+      "surface": "User",
+      "description": "Sort by distance from user",
+      "ui_element": "select_option",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "events.sort.popular",
+      "surface": "User",
+      "description": "Sort by popularity/RSVPs",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "events.sort.price_low",
+      "surface": "User",
+      "description": "Sort by price low to high",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "events.map.toggle",
+      "surface": "User",
+      "description": "Toggle map view",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "events.map.recenter",
+      "surface": "User",
+      "description": "Recenter map to user location",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "events.map.apply_bounds",
+      "surface": "User",
+      "description": "Apply map bounds as filter",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "event.card.save",
+      "surface": "User",
+      "description": "Save/favorite event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "event.card.share",
+      "surface": "User",
+      "description": "Share event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "event.card.view_details",
+      "surface": "User",
+      "description": "View full event details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "event.detail.gallery",
+      "surface": "User",
+      "description": "Event image/video gallery",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "event.detail.schedule",
+      "surface": "User",
+      "description": "Event schedule/agenda",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "event.detail.location_map",
+      "surface": "User",
+      "description": "Event location on map",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "event.detail.host_profile",
+      "surface": "User",
+      "description": "Host profile card",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "event.detail.terms",
+      "surface": "User",
+      "description": "Event terms and conditions",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "event.detail.report",
+      "surface": "User",
+      "description": "Report event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "event.tickets.tier_select",
+      "surface": "User",
+      "description": "Select ticket tier",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "event.tickets.qty",
+      "surface": "User",
+      "description": "Select ticket quantity",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "event.tickets.apply_code",
+      "surface": "User",
+      "description": "Apply promo code",
+      "ui_element": "input",
+      "requires_edge_function": "events-apply-promo"
+    },
+    {
+      "option_id": "event.tickets.buy_now",
+      "surface": "User",
+      "description": "Purchase tickets",
+      "ui_element": "button",
+      "requires_edge_function": "events-checkout"
+    },
+    {
+      "option_id": "event.rsvp.free_join",
+      "surface": "User",
+      "description": "RSVP for free event",
+      "ui_element": "button",
+      "requires_edge_function": "events-rsvp"
+    },
+    {
+      "option_id": "event.waitlist.join",
+      "surface": "User",
+      "description": "Join waitlist when sold out",
+      "ui_element": "button",
+      "requires_edge_function": "events-rsvp"
+    },
+    {
+      "option_id": "event.calendar.add_ics",
+      "surface": "User",
+      "description": "Download ICS calendar file",
+      "ui_element": "button",
+      "requires_edge_function": "events-ics"
+    },
+    {
+      "option_id": "event.calendar.add_google",
+      "surface": "User",
+      "description": "Add to Google Calendar",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "event.checkin.qr",
+      "surface": "User",
+      "description": "Check-in with QR code",
+      "ui_element": "button",
+      "requires_edge_function": "events-checkin"
+    },
+    {
+      "option_id": "event.checkin.gps",
+      "surface": "User",
+      "description": "Check-in with GPS verification",
+      "ui_element": "button",
+      "requires_edge_function": "events-checkin"
+    },
+    {
+      "option_id": "events.empty.no_results",
+      "surface": "User",
+      "description": "No events found empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "events.empty.clear_filters",
+      "surface": "User",
+      "description": "Clear all filters",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "profile.events.my_tickets",
+      "surface": "Profile",
+      "description": "My purchased tickets",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.events.my_events",
+      "surface": "Profile",
+      "description": "Events I've created/hosted",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.events.saved",
+      "surface": "Profile",
+      "description": "Saved/favorited events",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.events.calendar_sync",
+      "surface": "Profile",
+      "description": "Calendar sync/export",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.events.invoices",
+      "surface": "Profile",
+      "description": "Event invoices/receipts",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.events.badges",
+      "surface": "Profile",
+      "description": "Event participation badges",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.events.settings",
+      "surface": "Profile",
+      "description": "Event notification settings",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.events.queue.pending",
+      "surface": "Admin",
+      "description": "Pending events queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.events.queue.flagged",
+      "surface": "Admin",
+      "description": "Flagged events queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.events.approve",
+      "surface": "Admin",
+      "description": "Approve event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.reject",
+      "surface": "Admin",
+      "description": "Reject event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.feature",
+      "surface": "Admin",
+      "description": "Feature event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.unfeature",
+      "surface": "Admin",
+      "description": "Unfeature event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.cancel",
+      "surface": "Admin",
+      "description": "Cancel event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.restore",
+      "surface": "Admin",
+      "description": "Restore cancelled event",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.refund",
+      "surface": "Admin",
+      "description": "Process refund for tickets",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.payout",
+      "surface": "Admin",
+      "description": "Process host payout",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.bulk.select_all",
+      "surface": "Admin",
+      "description": "Bulk select all events",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "admin.events.bulk.approve",
+      "surface": "Admin",
+      "description": "Bulk approve selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.bulk.reject",
+      "surface": "Admin",
+      "description": "Bulk reject selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.bulk.export_csv",
+      "surface": "Admin",
+      "description": "Export events/tickets/RSVPs to CSV",
+      "ui_element": "button",
+      "requires_edge_function": "events-export-csv"
+    },
+    {
+      "option_id": "admin.events.edit.event",
+      "surface": "Admin",
+      "description": "Edit event details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.events.edit.tiers",
+      "surface": "Admin",
+      "description": "Edit ticket tiers",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.events.audit_log",
+      "surface": "Admin",
+      "description": "View event audit log",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.events.filters.status",
+      "surface": "Admin",
+      "description": "Filter by status",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.events.filters.date",
+      "surface": "Admin",
+      "description": "Filter by date range",
+      "ui_element": "date_picker"
+    },
+    {
+      "option_id": "admin.events.filters.city",
+      "surface": "Admin",
+      "description": "Filter by city",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.events.search.input",
+      "surface": "Admin",
+      "description": "Admin search input",
+      "ui_element": "input"
+    }
+  ],
+  "summary": {
+    "total_options": 71,
+    "by_surface": {
+      "User": 42,
+      "Profile": 7,
+      "Admin": 22
+    },
+    "requires_postgis": 6,
+    "requires_storage": 1,
+    "requires_edge_functions": 7
+  }
+}
+

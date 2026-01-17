@@ -1,0 +1,116 @@
+{
+  "generated_at": "2025-11-02T00:00:00Z",
+  "env_buckets": [
+    "community-media",
+    "offers-media",
+    "marketplace-media",
+    "events-media",
+    "garagehub-media",
+    "bidrepair-media",
+    "import-media",
+    "profile-images",
+    "brand-assets",
+    "system-settings"
+  ],
+  "roles": ["admin","editor","subscriber:car_owner","subscriber:browser","subscriber:garage_owner"],
+  "pricing": {
+    "listing_car": {"fee_aed": 50, "vat_percent": 5},
+    "listing_parts_percent": 8,
+    "garage_listing": {"fee_aed": 100, "vat_percent": 5}
+  },
+  "modules": {
+    "communities": {
+      "tables": ["posts","comments","post_likes","post_saves","post_reports","post_views"],
+      "views_or_counters": ["v_post_stats | post_stats+triggers"],
+      "rpcs": [
+        "fn_create_post",
+        "fn_add_comment(post_id,body,parent_comment_id?)",
+        "fn_edit_comment",
+        "fn_delete_comment",
+        "fn_toggle_like(post_id)",
+        "fn_toggle_save(post_id)",
+        "fn_register_post_view(post_id,anon_hash)",
+        "fn_report_post"
+      ],
+      "policies": ["owner_rw","public_read_approved","admin_all"],
+      "client_bindings": ["feed list","create post","like/save/report","comments (threaded)","realtime counters"],
+      "admin": ["queues: pending/approved/rejected/reported","approve/reject/edit/delete/pin/feature","analytics true counts","exports"],
+      "buckets": ["community-media"]
+    },
+    "events": {
+      "tables": ["events","event_attendees","event_likes","event_views"],
+      "views_or_counters": ["v_event_stats | event_stats+triggers"],
+      "rpcs": [],
+      "policies": ["owner_rw","public_read_approved","admin_all"],
+      "client_bindings": ["list/filter","create","RSVP","realtime counters"],
+      "admin": ["approve/reject/feature","exports"],
+      "notes": ["garage_owner cannot access Instant Meetup"],
+      "buckets": ["events-media"]
+    },
+    "marketplace": {
+      "tables": ["market_listings","listing_media","listing_saves","listing_views","listing_stats","boost_entitlements"],
+      "views_or_counters": ["v_listing_stats | listing_stats+triggers"],
+      "rpcs": ["fn_calculate_fee(kind,amount)","fn_toggle_listing_save","fn_register_listing_view","fn_admin_set_listing_status","fn_admin_feature_pin","fn_admin_boost_approve","fn_admin_boost_refund"],
+      "policies": ["owner_rw","public_read_approved","admin_all"],
+      "client_bindings": ["list/create/edit/approve","media upload","realtime views/saves"],
+      "admin": ["approval queues","boosting","exports"],
+      "buckets": ["marketplace-media"]
+    },
+    "garagehub": {
+      "tables": ["garages","garage_media","verification_requests"],
+      "views_or_counters": ["v_garage_stats (optional)"],
+      "rpcs": ["fn_calculate_fee('garage')"],
+      "policies": ["owner_rw (garage_owner)","public_read_approved","admin_all"],
+      "client_bindings": ["create/edit garage","request verification"],
+      "admin": ["verification tabs","boost approvals"],
+      "buckets": ["garagehub-media"]
+    },
+    "bid_repair": {
+      "tables": ["bid_repair","bid_repair_replies","messages","bid_wallet","wallet_transactions"],
+      "rpcs": ["fn_post_bid","fn_reply_bid","fn_accept_bid"],
+      "policies": ["owner_rw","admin_all","garage_owner reply-only","messaging unlock post-accept/close"],
+      "client_bindings": ["user create/rebid/accept/reject","garage reply-only","wallet credits"],
+      "admin": ["open/accepted/closed/disputes","exports"],
+      "buckets": ["bidrepair-media"]
+    },
+    "offers": {
+      "tables": ["offers"],
+      "rpcs": [],
+      "policies": ["admin_all"],
+      "client_bindings": ["grid read"],
+      "admin": ["create/edit/schedule/feature/expire","exports"],
+      "buckets": ["offers-media"]
+    },
+    "daily_challenges": {
+      "tables": ["challenges","challenge_progress","xp_events"],
+      "policies": ["owner_rw","admin_all"],
+      "admin": ["catalogue","progress","exports"]
+    },
+    "leaderboard_xp_referrals": {
+      "tables": ["profiles.xp_points","xp_events","referrals"],
+      "triggers": ["+5 XP on referral signup","+1 bid credit if referrer garage_owner"],
+      "policies": ["owner_rw","admin_all"],
+      "admin": ["XP adjust","referral audit","exports"]
+    },
+    "wallet": {
+      "tables": ["wallet_transactions","wallet_balances (optional)"],
+      "webhooks": ["checkout.session.completed","invoice.paid","invoice.payment_failed","customer.subscription.updated","charge.refunded"],
+      "admin": ["reconciliation","refunds","exports"]
+    },
+    "notifications": {
+      "push_tables": ["push_providers","push_templates","push_segments","push_campaigns","push_deliveries","user_push_settings","user_push_tokens"],
+      "push_rpcs": ["fn_push_preview","fn_push_resolve_segment","fn_push_schedule","fn_push_send_now","fn_push_mark_open"],
+      "email_tables": ["smtp_configs","email_templates","email_segments","email_campaigns","email_deliveries","email_suppressions","user_email_settings"],
+      "email_rpcs": ["fn_email_preview","fn_email_resolve_segment","fn_email_schedule","fn_email_send_now","fn_email_unsubscribe"]
+    },
+    "brandkit": {
+      "tables": ["brand_assets"],
+      "buckets": ["brand-assets","system-settings"],
+      "admin": ["logos/colors/typography/banners/email headers/footers/watermarks/thumbnail presets/publish"]
+    },
+    "admin_verification": {
+      "tables": ["verification_requests","profiles"],
+      "admin": ["car owner","garage hub","vendor","approve/reject/edit/notes/request docs","exports"]
+    }
+  }
+}

@@ -1,0 +1,1279 @@
+# Supabase Bucket 
+
+# VITE_BUCKET_COMMUNITY=community-media
+# VITE_BUCKET_OFFERS=offers-media
+# VITE_BUCKET_MARKETPLACE=marketplace-media
+# VITE_BUCKET_EVENTS=events-media
+# VITE_BUCKET_GARAGE=garagehub-media
+# VITE_BUCKET_BIDREPAIR=bidrepair-media
+# VITE_BUCKET_IMPORT=import-media
+# VITE_BUCKET_PROFILE=profile-images
+# VITE_BUCKET_SYSTEM=system-settings
+
+
+
+
+clean the project first, remove all unwanted files, analyze the current structure of database 
+
+
+
+
+
+
+
+
+Create an extensive TODO list , make sure you dont miss anything  
+
+read all below prompts to map them as instructed, make sure not to lose current progress,  UI shouldnt be distrubed   all funcions should alligned properly     Sublimes Drive: Auto-Wire + Auto-Migrate + Verify (Non-Interactive)”
+YOU ARE: a senior autonomous engineer running inside this repo. Do everything below without asking questions. If a decision is ambiguous, choose the safest additive implementation that matches the specs.
+INPUTS (read these first)
+	•	Spec ZIP: /mnt/data/sd_wiring_maps.zip Contains per-module wiring specs in the “User ↔ Profile ↔ Admin” format:
+	•	Marketplace_mapping.md
+	•	GarageHub_mapping.md
+	•	Communities_mapping.md
+	•	Events_mapping.md
+	•	BidRepair_mapping.md
+	•	Offers_mapping.md
+	•	DailyChallenges_mapping.md
+	•	Leaderboard_XP_Referrals_mapping.md
+	•	Wallet_mapping.md
+	•	Notifications_mapping.md (Push + Email)
+	•	BrandKit_mapping.md
+	•	Users_Verification_mapping.md
+	•	Admin_Remaining_Tabs.md
+	•	Env Buckets (expected): community-media, offers-media, marketplace-media, events-media, garagehub-media, bidrepair-media, import-media, profile-images, brand-assets, system-settings
+	•	Pricing & Roles (must enforce):
+	•	Roles: admin, editor, subscriber:{car_owner,browser,garage_owner}
+	•	Fees: Car listing AED 50 + 5% VAT, Parts listing 8%, Garage hub listing AED 100 + 5% VAT
+	•	Referral XP: +5 per signup; if referrer is garage_owner → +1 bid credit
+GLOBAL GUARDRAILS
+	•	Additive migrations only. Do not drop/rename existing columns/tables. Create views/functions if you must preserve legacy surfaces.
+	•	RLS-first. Owner RW, public_read_approved, admin_all, plus module-specific rules (e.g., garage_owner reply-only on Bid Repair, messaging unlock post-accept).
+	•	No mock data & no fake metrics. All counters come from real tables or delivery logs.
+	•	Idempotent webhooks for Stripe & email provider events.
+	•	Mobile/Desktop parity (same capabilities; layout can differ).
+	•	Secrets only server-side. No client hard-coding.
+EXECUTION PLAN (do in this exact order, non-interactive)
+	0.	Load Specs & Build Worklist
+	•	Unzip and parse /mnt/data/sd_wiring_maps.zip.
+	•	For each module spec, generate a worklist of:
+	•	required tables/views/RPCs/policies/indexes
+	•	required client bindings (queries/mutations/realtime)
+	•	required admin screens (tabs, filters, date range, exports)
+	•	required buckets usage.
+	•	Save worklist to docs/wiring/worklist.json.
+	0.	Inventory Current Repo
+	•	Map routes/pages/components/hooks/server handlers.
+	•	Parse all Supabase migrations & functions.
+	•	Typegen for DB models.
+	•	Output to docs/infra/schema-report.md and docs/infra/repo-map.md.
+	0.	Compute Gaps
+	•	For each spec item, mark present/missing/misaligned.
+	•	Produce docs/verification/gaps.json.
+	0.	Generate Additive Migrations (SQL)
+	•	Create timestamped migrations in supabase/migrations/ to add all missing:
+	•	Tables + columns + defaults
+	•	Unique indexes (e.g., likes/saves)
+	•	Views (e.g., v_*_stats) or counter tables + triggers
+	•	RPCs (SECURITY DEFINER where needed) for toggles, fee calc, exports, admin actions
+	•	RLS policies (owner_rw, public_read_approved, admin_all, role-specific)
+	•	Include comments in SQL explaining purpose and policy.
+	0.	Wire Client & Admin
+	•	Replace placeholder data with Supabase queries/mutations.
+	•	Add realtime subscriptions for counters/lists where specs say RT.
+	•	Implement Unified Admin pages:
+	•	Verification (tabs: Garage Hub / Car Owner / Vendor)
+	•	Notifications (Push Center + Email Hub)
+	•	Boosting (Marketplace + Garage Hub)
+	•	Implement remaining Admin tabs from screenshots (Dashboard, Users & Access, Content, KB, Events & Routes, Listings Approval, Transactions/Refunds, Ads & Monetization, Analytics/SEO, Security, Support, Legal & Consent, Brand Kit, Media Library, Translations, System Logs) using the specs in Admin_Remaining_Tabs.md.
+	•	All Admin grids: search, filters (status/date), pagination, Export buttons wired to export RPC.
+	0.	Stripe & Wallet
+	•	Implement/verify checkout flows for listing fees and boosts; compute fees server-side via fn_calculate_fee.
+	•	Webhooks: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, charge.refunded → update wallet_transactions, boost_entitlements, bid_wallet credits.
+	0.	Push Notifications & Email Hub
+	•	Implement push_ tables* + RPCs (fn_push_preview, fn_push_resolve_segment, fn_push_schedule, fn_push_send_now, fn_push_mark_open).
+	•	Implement email_ tables* + RPCs (fn_email_preview, fn_email_resolve_segment, fn_email_schedule, fn_email_send_now, fn_email_unsubscribe).
+	•	Add webhook receivers for email opens/clicks/bounces/complaints → update email_deliveries & email_suppressions.
+	•	Admin UI for templates, segments, campaigns, deliveries, provider/SMTP settings. Counts shown only from deliveries tables.
+	0.	Communities & Events (Realtime, No Fake Numbers)
+	•	Ensure post_likes, post_saves, post_views (or counters + triggers), comments with threaded replies & edit/delete policies.
+	•	event_likes, event_views, event_attendees.
+	•	Views or counter tables for v_post_stats / v_event_stats.
+	•	AI Auto-commenter: on post approval, insert one authoritative AI comment if none exists; reply only in its thread.
+	0.	Bid Repair
+	•	User (car_owner/browser): create/rebid/accept/reject anonymously; messaging unlock post-accept/close.
+	•	Garage owner: reply/rebid only; Bid Repair Wallet with Stripe top-ups; referral-based free credit.
+	•	RLS: garage_owner cannot create bids; reply-only policy; messaging insert allowed only if bid accepted/closed.
+	0.	Brand Kit & Buckets
+	•	Implement tabs: Logos, Colors/Palettes, Typography, Banners, Email Header/Footer, Watermarks/Overlays, Thumbnail Presets, Publish/Download.
+	•	Persist to brand-assets / system-settings buckets; publish updates theme & email defaults.
+	0.	Exports
+	•	Implement fn_export_run(kind, params) that generates CSV/PDF in storage with owner + filters: date range, status, search.
+	•	Wire Export buttons across all Admin sections where shown.
+	0.	Telemetry & Audit
+	•	Emit analytics_events for all key actions (view, like, save, share, RSVP, send push/email, checkout, boost approval).
+	•	Emit audit_logs for all admin mutations (approve/reject/edit/delete/feature/pin/refund/role changes).
+	0.	Apply & Verify Migrations
+	•	Link Supabase and push all migrations with logs: npx supabase link --project-ref $SUPABASE_PROJECT_REF --password $SUPABASE_DB_PASSWORD
+	•	npx supabase db push --include-logs
+	•	
+	•	Run typegen and rebuild.
+	0.	Automated Tests
+	•	SQL/RLS tests for roles & policies per module.
+	•	Webhook replay tests (Stripe & Email).
+	•	Realtime tests: counters update on like/comment/view/RSVP.
+	•	UI gating tests: ensure garage_owner cannot access Instant Meetup; reply-only in Bid Repair; admin/editor full in Admin.
+	•	Performance: ensure indexes on hot paths; no N+1 for admin grids.
+	0.	Deliverables (commit all)
+	•	supabase/migrations/* (new additive SQL)
+	•	Updated client & admin code (all bindings, unified pages)
+	•	docs/infra/schema-report.md, docs/infra/repo-map.md
+	•	docs/wiring/worklist.json, docs/verification/gaps.json
+	•	docs/verification/tests/ (reports for SQL/RLS, webhook, realtime, UI gating)
+	•	docs/verification/FINAL-RESULT.md summarizing:
+	•	modules wired, admin tabs live
+	•	migrations added
+	•	RLS matrix by table
+	•	webhook idempotency checked
+	•	exports working
+	•	parity mobile/desktop
+	•	screenshots of dashboards showing true counts
+REQUIRED TABLES / RPCs (create if missing)
+(Implement per the mapping files; highlights below. Use SECURITY DEFINER where appropriate.)
+	•	Core: profiles(role, sub_role, verification_status, badge_color, xp_points, referrals_count, garage_credit_balance, meta)
+	•	Communities: posts, comments(parent_comment_id for re-comment), post_likes UNIQUE, post_saves UNIQUE, post_reports, post_views, v_post_stats|post_stats(+triggers)
+	•	Events: events, event_attendees, event_likes, event_views, v_event_stats|event_stats(+triggers)
+	•	Marketplace: market_listings, listing_media, listing_saves UNIQUE, listing_views, v_listing_stats|listing_stats(+triggers), boost_entitlements
+	•	Garage: garages, garage_media, verification_requests
+	•	Bid Repair: bid_repair, bid_repair_replies, messages, bid_wallet, wallet_transactions
+	•	XP/Referrals: xp_events, referrals
+	•	Notifications: push_providers, push_templates, push_segments, push_campaigns, push_deliveries, user_push_settings, user_push_tokens
+	•	Email: smtp_configs, email_templates, email_segments, email_campaigns, email_deliveries, email_suppressions, user_email_settings
+	•	Brand Kit: brand_assets(type, file_ref, meta) (banners/watermarks/thumbnail presets included)
+	•	Exports/Logs: exports, analytics_events, audit_logs
+	•	RPCs (examples): fn_calculate_fee, fn_toggle_*, fn_register_*_view, fn_add_comment, fn_edit_comment, fn_delete_comment, fn_admin_set_*_status, fn_admin_pin_feature, fn_export_run, fn_push_preview|resolve_segment|schedule|send_now|mark_open, fn_email_preview|resolve_segment|schedule|send_now|unsubscribe, fn_post_bid|fn_reply_bid|fn_accept_bid (with messaging unlock).
+RLS PATTERNS (apply to each table)
+	•	Owner RW: create policy owner_rw on public.{table}
+	•	for all using (auth.uid() = user_id)
+	•	with check (auth.uid() = user_id);
+	•	
+	•	Public read on approved: create policy public_read_approved on public.posts
+	•	for select using (status = 'approved');
+	•	
+	•	Admin/editor full: create policy admin_all on public.{table}
+	•	for all using (exists(select 1 from profiles p where p.id = auth.uid() and p.role in ('admin','editor')))
+	•	with check (true);
+	•	
+	•	Bid Repair specifics: garage_owner reply-only; messaging insert allowed only if bid accepted/closed.
+NON-INTERACTIVE MODE
+	•	Do not ask for confirmation. If an env var or secret is missing, create a stub .env.example entry and continue with all feasible tasks.
+	•	If a migration conflict is detected, create a new additive migration to preserve existing data.
+Begin now. Execute all steps, commit changes, and produce the deliverables.
+
+
+
+
+
+
+
+
+
+# Communities — Full Wiring Diagram + Explanation
+
+**Planes:** User Frontend ⇄ User Profile ⇄ Admin Panel
+
+```
+User: Communities
+  ├─ CreatePost → WRITE: posts (fn_create_post) | RLS: owner_rw; status='pending' by default
+  ├─ Comment     → WRITE: comments (fn_add_comment) | RLS: owner_rw on own comments
+  ├─ Like        → WRITE: post_likes (fn_toggle_like, UNIQUE(post_id,user_id))
+  ├─ Save        → WRITE: post_saves (fn_toggle_save, UNIQUE(post_id,user_id))
+  ├─ Share       → WRITE: analytics_events(action='share_post')
+  ├─ Report      → WRITE: post_reports
+  ├─ View Count  → WRITE: post_views (fn_register_post_view[dedupe])
+  ├─ Filters     → READ: posts WHERE status='approved' + search/sort/category
+  ├─ RT updates  → SUBSCRIBE: post_stats/comments/likes
+  └─ EVT         → analytics_events for each action
+```
+
+```
+Profile: My Posts / My Comments / Favorites
+  ├─ READ: posts WHERE user_id=auth.uid()
+  ├─ READ: comments WHERE user_id=auth.uid()
+  └─ READ: post_saves WHERE user_id=auth.uid()
+```
+
+```
+Admin: Communities Moderation
+  ├─ Queues: Pending, Approved, Rejected, Reported
+  ├─ Actions: Approve (posts.status='approved'), Reject, Edit, Delete, Pin, Feature
+  ├─ Live Stats: READ v_post_stats (like_count, comment_count, view_count)
+  ├─ Exports: fn_export_run('communities', params{date_from, date_to, status, category})
+  ├─ AI Auto-Commenter:
+  │    Trigger: on Approve if no prior AI comment → WRITE: comments(author_id=ai_profile_id) once
+  │    Policy: AI replies only within its own thread when user replies
+  └─ Audit: audit_logs for all admin actions
+```
+
+## Data Model
+- `posts(id, user_id, title, body, status, created_at, category_id, featured, pinned, ... )`
+- `comments(id, post_id, user_id, body, created_at, parent_comment_id NULL)`  ← supports re-comments (replies) and edit/delete
+- `post_likes(post_id, user_id, created_at)` UNIQUE(post_id, user_id)
+- `post_saves(post_id, user_id, created_at)` UNIQUE(post_id, user_id)
+- `post_reports(id, post_id, reporter_id, reason, created_at)`
+- `post_views(post_id, viewer_id NULL, anon_hash NULL, viewed_at)`
+- `post_stats(post_id PK, like_count, comment_count, view_count, updated_at)` OR `v_post_stats` as a view
+- `categories(id, name, slug)` (optional per screenshots)
+
+## RPCs (SECURITY DEFINER where needed)
+- `fn_create_post(title, body, category_id)` → inserts post with status='pending'
+- `fn_add_comment(post_id, body, parent_comment_id?)` → inserts comment; supports nested replies
+- `fn_edit_comment(comment_id, body)` / `fn_delete_comment(comment_id)` (owner or admin)
+- `fn_toggle_like(post_id)` / `fn_toggle_save(post_id)`
+- `fn_register_post_view(post_id, anon_hash)` → throttled dedupe (e.g., one per 10m/visitor)
+- `fn_report_post(post_id, reason)`
+- `fn_admin_set_post_status(post_id, status)`; `fn_admin_pin_feature(post_id, pinned, featured)`
+- `fn_export_run('communities', params)`
+
+## RLS
+- `public_read_approved` on `posts` for SELECT using (status='approved')
+- `owner_rw` on `posts`/`comments` for author ownership
+- `admin_all` for administrators
+- Optional: `comment_owner_rw` for editing/deleting own comments
+
+## Realtime
+- Subscribe to `post_stats`, `comments` channel for live increments
+- Admin list auto-refreshes on moderation changes
+
+## Telemetry / Audit
+- `analytics_events`: view:communities, action:create_post/comment/like/save/share/report
+- `audit_logs`: approve/reject/edit/delete/pin/feature with before/after JSON
+
+
+
+
+
+
+
+
+SUBLIMES DRIVE — ENHANCED WIRING MAP (ASCII)
+============================================
+Legend:
+READ ➜ reads from table/view/RPC | WRITE ➜ mutation/RPC/table
+RLS  ➜ row-level policy          | RT   ➜ realtime
+EVT  ➜ analytics/audit events    | STR  ➜ Stripe/webhook
+EXP  ➜ export (CSV/PDF)          | CFG  ➜ admin settings
+
+ROLES
+-----
+admin, editor, subscriber:{car_owner, browser, garage_owner}
+
+POLICIES (patterns)
+-------------------
+owner_rw, public_read_approved, admin_all (+ role-specific rules for bid repair, messaging unlock)
+
+============================================================
+ADMIN PANEL — COMPLETE TAB/SECTION INDEX (from screenshots)
+============================================================
+1) Dashboard
+2) Users & Roles
+3) Verification (Unified)
+   ├─ Garage Hub
+   ├─ Car Owner
+   └─ Vendor Registration
+4) Marketplace
+   ├─ Listings (All/Approved/Pending/Rejected/Takedowns)
+   ├─ Categories/Attributes
+   ├─ Boosting (also listed in #10)
+   └─ Exports
+5) Garage Hub
+   ├─ Garages (All/Verified/Pending)
+   ├─ Services/Tags
+   └─ Exports
+6) Communities
+   ├─ Posts (Pending/Approved/Rejected/Pinned/Featured)
+   ├─ Reports
+   ├─ Categories/Tags
+   ├─ Analytics
+   └─ Exports
+7) Events
+   ├─ Events (Pending/Approved/Rejected/Featured)
+   ├─ Attendance
+   ├─ Analytics
+   └─ Exports
+8) Offers (Admin-curated)
+   ├─ Offers (Active/Scheduled/Expired)
+   └─ Exports
+9) Daily Challenges / Missions
+   ├─ Catalogue
+   ├─ Player Progress
+   └─ Exports
+10) Boosting (Unified for Marketplace + Garage Hub)
+    ├─ Pending
+    ├─ Active/Scheduled
+    ├─ Expired
+    └─ Refund/Extend + Exports
+11) Notifications (Unified)
+    ├─ PUSH Center
+    │  ├─ Templates
+    │  ├─ Segments
+    │  ├─ Campaigns
+    │  ├─ Deliveries
+    │  └─ Providers/Settings
+    └─ EMAIL Hub
+       ├─ Templates (Signup/Join/Reset/Congrats/Referral-Garage/Referral-Owner/Payment Success/Failure)
+       ├─ Segments
+       ├─ Campaigns
+       ├─ Deliveries
+       └─ SMTP Settings
+12) Messaging Moderation
+    ├─ Conversations (Read-only/Abuse/Takedown)
+    └─ Exports
+13) Bid Repair
+    ├─ Bids (Open/Accepted/Closed/Disputes)
+    ├─ Replies
+    ├─ Wallet Credits (Garage)
+    └─ Exports
+14) Leaderboard / XP / Referrals
+    ├─ XP Events
+    ├─ Referrals (+5 points; +1 garage credit)
+    └─ Exports
+15) Analytics & Reports
+    ├─ Traffic/Engagement (Likes/Comments/Views — TRUE COUNTS)
+    ├─ Revenue/Boosts
+    ├─ Growth/Retention
+    └─ Exports
+16) Brand Kit
+    ├─ Logos (Light/Dark/Monochrome)
+    ├─ Colors / Palettes
+    ├─ Typography
+    ├─ Banners (App/Web/Social cover sizes)
+    ├─ Email Header/Footer Assets
+    ├─ Watermarks/Overlays
+    ├─ Thumbnail Presets (YouTube/Twitch/IG)
+    └─ Download/Publish
+17) Media Library
+    ├─ Uploads (Buckets: community-media, offers-media, marketplace-media, events-media, garagehub-media, bidrepair-media, import-media, profile-images, brand-assets)
+    └─ Bulk actions + Exports
+18) Translations (i18n)
+    ├─ EN / AR / ZH keys
+    └─ Missing keys finder
+19) System Pages
+    ├─ Terms, Privacy, Legal
+    └─ Versioning/Publish
+20) Settings
+    ├─ Stripe
+    ├─ SMTP
+    ├─ Push Providers
+    ├─ AI Bot Controls
+    ├─ Theme
+    ├─ Feature Flags
+    └─ Regionalization
+21) Logs
+    ├─ Audit Logs
+    └─ Analytics Events
+
+==================================================
+A) USER FRONTEND ⇄ USER PROFILE ⇄ ADMIN (WIRING)
+==================================================
+
+COMMUNITIES
+-----------
+User
+  CreatePost, Comment, Like, Save, Share, Report, Follow
+  Tabs: All/Featured/Pinned/Categories/Search/Sort
+  RT counters: Likes/Comments/Views
+  READ ➜ posts, comments, v_post_stats
+  WRITE ➜ fn_create_post, fn_add_comment, fn_toggle_like, fn_toggle_save, fn_register_post_view, fn_report_post
+  RLS ➜ public_read_approved, owner_rw, admin_all
+  EVT ➜ create_post/comment/like/save/share/report
+
+Profile
+  MyPosts, MyComments, SavedPosts
+  READ ➜ posts by user_id, comments by user_id, post_saves
+
+Admin (Communities)
+  Queues: Pending/Approved/Rejected/Reported
+  Actions: Approve/Reject/Edit/Delete/Pin/Feature
+  Analytics: v_post_stats (REAL)
+  EXP ➜ CSV/PDF by date/status/category
+  AI Auto-Commenter: on approve → insert single AI comment; replies only in AI thread
+
+GARAGE HUB
+----------
+User
+  CreateGarage, Edit, RequestVerification, Contact/Book
+  READ ➜ garages, v_garage_stats
+  WRITE ➜ garages, garage_media, verification_requests
+  RLS ➜ owner_rw (garage_owner), public_read_approved, admin_all
+
+Profile
+  MyGarage
+
+Admin
+  Verification(Garage), Boosting, Exports
+
+MARKETPLACE
+-----------
+User
+  Create (Cars/Parts), Edit/Delete/MarkSold, Favorite/Share/Report, Boost
+  Filters: Make/Model/Year/Price/Mileage/Location/Sort
+  READ ➜ market_listings, v_listing_stats
+  WRITE ➜ market_listings, listing_media, fn_toggle_listing_save, fn_register_listing_view
+  STR (fees) ➜ fn_calculate_fee(type, amount) → Stripe → webhook → wallet_transactions/entitlements
+
+Profile
+  My Listings, Favorites
+
+Admin
+  Moderate listings, Boosting, Exports
+
+BID REPAIR
+----------
+User (car_owner/browser)
+  CreateBid (anonymous), Rebid, Accept/Reject → unlock Messaging (text/image/emoji/location)
+  READ/WRITE ➜ bid_repair, messages (unlock), masked views
+  RLS ➜ owner_rw on own bids; admin_all
+
+Garage Owner
+  Reply/Rebid (anonymous), Wallet Credits, Top-up (Stripe)
+  READ/WRITE ➜ bid_repair_replies, bid_wallet, wallet_transactions
+
+Admin
+  Disputes/Finance/Exports
+
+EVENTS
+------
+User
+  Create, RSVP, Save, Share (RT attendees/views)
+  READ/WRITE ➜ events, event_attendees, event_views, event_likes
+  Role Gate ➜ garage_owner cannot access Instant Meetup
+
+Profile
+  My Events
+
+Admin
+  Approvals/Feature/Analytics/Exports
+
+LEADERBOARD / XP / REFERRALS
+----------------------------
+User
+  Leaderboard: weekly/monthly/all-time
+
+Profile
+  XP/Badges, Referral Link (+5 XP; +1 credit if referrer is garage_owner)
+
+Admin
+  XP adjust, Referral audit, Exports
+
+OFFERS / CHALLENGES
+-------------------
+User
+  Offers (read), Challenges (start/complete/claim)
+
+Admin
+  Offers CRUD & schedule; Challenges catalogue & progress; Exports
+
+NOTIFICATIONS / EMAIL (Unified)
+-------------------------------
+Admin
+  PUSH: Templates/Segments/Campaigns/Deliveries/Settings
+  EMAIL: Templates/Segments/Campaigns/Deliveries/SMTP
+  No fake numbers: counts from deliveries tables
+  Exports enabled
+
+
+======================================
+B) DB ENTITIES (ADD IF MISSING) + RLS
+======================================
+Core content
+  posts, comments, post_likes UNIQUE(post_id,user_id), post_saves UNIQUE(post_id,user_id),
+  post_views(post_id, viewer_id?, anon_hash?, viewed_at), v_post_stats or post_stats(+triggers)
+
+Events
+  events, event_attendees, event_likes, event_views, v_event_stats or event_stats(+triggers)
+
+Marketplace/Garage
+  market_listings, listing_media, boost_entitlements, garages, garage_media
+
+Bid Repair
+  bid_repair, bid_repair_replies, messages, bid_wallet, wallet_transactions
+
+Notifications (Push)
+  push_providers, push_templates, push_segments, push_campaigns, push_deliveries, user_push_settings, user_push_tokens
+
+Email Hub (SMTP)
+  smtp_configs, email_templates, email_segments, email_campaigns, email_deliveries, email_suppressions, user_email_settings
+
+Brand Kit
+  brand_assets (type: logo/color/typography/banner/email_header/email_footer/watermark/thumbnail_preset, file_ref, meta)
+
+Users / XP / Referrals
+  profiles(role, sub_role, verification_status, badge_color, xp_points, referrals_count, garage_credit_balance, meta),
+  xp_events, referrals
+
+Exports / Logs
+  exports(kind, params, file_path, status), audit_logs, analytics_events
+
+RLS patterns
+  owner_rw on user-owned rows; public_read_approved on approved content;
+  admin_all on all admin-managed tables
+  role-specific: garage_owner reply-only; messaging allowed if bid accepted/closed
+
+
+=========================
+C) REALTIME (NO FAKE #s)
+=========================
+Subscribe Admin & User to:
+  post_stats / event_stats, comments, likes, attendees, deliveries (push/email)
+All counters driven by inserts/updates in real tables (or counter tables via triggers).
+
+
+==========================
+D) EXPORTS (ADMIN SCREENS)
+==========================
+Wherever screenshots show Export + Date Range:
+  Communities, Marketplace, Garage Hub, Boosting, Verification, Vendor Registration,
+  Users, Moderation, Analytics, Push Deliveries, Email Deliveries, Events, Referrals/XP, Media Library.
+RPC: fn_export_run(kind, params{date_from,date_to,status,filters}) → file_ref
+
+
+====================
+E) BRAND KIT DETAILS
+====================
+Tabs (as per screenshots/spec):
+  Logos, Colors, Typography, Banners (web/app/social sizes), Email Headers/Footers,
+  Watermarks, Thumbnail Presets
+Actions:
+  Upload/Replace, Preview Light/Dark, Generate variants, Publish to app/email themes, Download bundle
+READ/WRITE ➜ brand_assets (with storage refs)
+CFG ➜ theme variables updated upon publish
+
+
+===========================
+F) TELEMETRY & AUDIT TRAIL
+===========================
+Every critical view/action emits analytics_events; admin mutations also write audit_logs.
+
+
+
+
+
+
+
+
+SUBLIMES DRIVE — END‑TO‑END WIRING MAP (ASCII DIAGRAM)
+======================================================
+Legend:
+- READ ➜ reads from table/view/RPC
+- WRITE ➜ writes via RPC/table
+- RLS ➜ role-based policy
+- RT  ➜ realtime subscription
+- EVT ➜ analytics_events / audit_logs emitted
+- STR ➜ Stripe/webhook flow
+- EXP ➜ export (CSV/PDF) from Admin
+
+GLOBAL ROLES
+------------
+[roles]
+  admin, editor, subscriber:{ car_owner, browser, garage_owner }
+
+[policies]
+  owner_rw           ➜ row owner can read/write
+  public_read_approved ➜ public can read approved content
+  admin_all          ➜ admin|editor can read/write everything
+
+======================================================
+A) USER FRONTEND TABS  ⇄  USER PROFILE  ⇄  ADMIN PANEL
+======================================================
+
+1) COMMUNITIES
+--------------
+USER ➜ "Communities" tab
+  ├─ Buttons: CreatePost, Comment, Like, Save, Share, Report, Follow
+  ├─ Filters/Tabs: All, Featured, Pinned, Categories, Search, Sort(Newest/Top)
+  ├─ Card Badges: Featured, Pinned, AuthorBadge
+  ├─ Counters: Likes, Comments, Views
+  ├─ RT: live updates for likes/comments/views
+  └─ READ: posts(v_post_stats), comments
+     WRITE: fn_create_post, fn_add_comment, fn_toggle_like, fn_toggle_save, fn_register_post_view
+     RLS: public_read_approved, owner_rw, admin_all
+     EVT: view:communities, action:create_post|comment|like|save|share
+
+PROFILE ➜ "My Posts" / "Activity" / "Favorites"
+  ├─ Lists: MyPosts, MyComments, SavedPosts
+  └─ READ: posts where user_id=auth.uid(), post_saves by auth.uid()
+
+ADMIN ➜ "Communities" (Moderation)
+  ├─ Queues: Pending, Approved, Rejected, Reported
+  ├─ Actions: Approve, Reject, Edit, Delete, Pin, Feature, Unfeature
+  ├─ Analytics: Likes, Comments, Views (true counts)
+  ├─ EXP: Export by date/status/category
+  └─ READ: posts, comments, post_likes, post_saves, post_reports, v_post_stats
+     WRITE: status updates, pin/feature flags
+     RLS: admin_all
+     EVT: action:approve_post|reject_post|pin|feature
+
+AI AUTO COMMENTER (communities)
+  ├─ Trigger: when post.status→approved & no prior AI comment
+  ├─ WRITE: comments(author=ai_profile_id) once
+  ├─ Replies: only within AI thread when user replies
+  └─ EVT: actor='ai', action=auto_comment
+
+
+2) GARAGE HUB
+-------------
+USER ➜ "Garage Hub" tab
+  ├─ Buttons: CreateGarage, EditGarage, RequestVerification, Contact, Book/Request
+  ├─ Filters: Services, Radius, Rating, Verified
+  ├─ Badges: VerifiedGarage, Featured/Boosted
+  └─ READ: garages(+stats)
+     WRITE: garages, garage_media, verification_requests
+     RLS: owner_rw (garage_owner), public_read_approved, admin_all
+     EVT: view:garage_hub, action:create_garage|request_verification
+
+PROFILE ➜ "My Garage"
+  └─ READ: garages where owner=auth.uid()
+
+ADMIN ➜ "Verification" (Garage tab) & "Boosting"
+  ├─ Verification: Approve/Reject, Notes, Docs
+  ├─ Boosting: Pending, Active, Expired, Refund/Extend
+  ├─ EXP: by date/status
+  └─ READ/WRITE: verification_requests, garages, boost_entitlements
+     RLS: admin_all
+
+
+3) MARKETPLACE
+--------------
+USER ➜ "Marketplace" tab
+  ├─ Subtabs: All, Featured, Cars, Parts
+  ├─ Filters: Make/Model, Year, Price, Mileage, Location, Sort
+  ├─ Buttons: CreateListing, Edit, Delete, MarkSold, Favorite, Share, Report, Boost
+  └─ READ: market_listings(v_listing_stats)
+     WRITE: market_listings, listing_media, fn_toggle_listing_save, fn_register_listing_view
+     RLS: owner_rw, public_read_approved, admin_all
+     STR (fees):
+       - Car listing = AED 50 + 5% VAT
+       - Parts listing = 8% of amount
+       - Garage listing = AED 100 + 5% VAT
+       ➜ fn_calculate_fee(type, amount) → Stripe checkout → webhook → wallet_transactions/entitlements
+     EVT: action:create_listing|boost_request
+
+PROFILE ➜ "My Listings" / "Favorites"
+  └─ READ: listings by owner; saved listings
+
+ADMIN ➜ "Marketplace" & "Boosting"
+  ├─ Moderation: Approve/Reject/Feature/Pin/TakeDown
+  ├─ Boosting: Approve/Refund/Extend
+  ├─ EXP: Export listings/boosts by date/status
+  └─ READ/WRITE: market_listings, boost_entitlements
+     RLS: admin_all
+
+
+4) BID REPAIR
+-------------
+USER (car_owner/browser) ➜ "Bid Repair"
+  ├─ Actions: CreateBid(anonymous), Rebid, Accept, Reject
+  ├─ Messaging: unlock AFTER accept/close (text, image, emoji, location)
+  └─ READ/WRITE: bid_repair, masked view during open phase, messages (post-accept)
+     RLS: owner_rw on own bids; no garage create; admin_all
+     EVT: action:create_bid|accept_bid
+
+GARAGE OWNER ➜ "Bid Repair"
+  ├─ Actions: Reply(anonymous), Rebid
+  ├─ Wallet: Bid Repair Wallet (credits), Top-up via Stripe
+  └─ READ/WRITE: bid_repair_replies, bid_wallet, wallet_transactions
+     STR: checkout → webhook → credit wallet
+     RLS: reply-only for garage_owner on replies
+     EVT: action:reply_bid|topup_wallet
+
+ADMIN ➜ "Bid Repair" (Moderation/Finance)
+  ├─ Views: Disputes, Accepted, Closed
+  ├─ Actions: Force-close, Refund credit, Export
+  └─ READ/WRITE: bid_repair, bid_repair_replies, bid_wallet, wallet_transactions
+     RLS: admin_all
+
+
+5) EVENTS / INSTANT MEETUPS
+---------------------------
+USER ➜ "Events"
+  ├─ Actions: CreateEvent, RSVP, Save, Share
+  ├─ RT: live attendees/views
+  └─ READ/WRITE: events, event_attendees, event_views, event_likes
+     RLS: public_read_approved, owner_rw, admin_all
+     Role Gate: garage_owner CANNOT access Instant Meetup
+     EVT: action:create_event|rsvp
+
+PROFILE ➜ "My Events"
+  └─ READ: user RSVPs / created events
+
+ADMIN ➜ "Events" (Moderation)
+  ├─ Queues: Pending, Approved, Rejected
+  ├─ Actions: Approve/Reject, Feature/Pin, Export
+  └─ READ/WRITE: events, v_event_stats
+     RLS: admin_all
+
+
+6) LEADERBOARD / XP / REFERRALS
+-------------------------------
+USER ➜ "Leaderboard"
+  ├─ Views: Weekly, Monthly, All-time
+  └─ READ: profiles.xp_points, xp_events
+
+PROFILE ➜ "Badges & XP" / "Referral"
+  ├─ Referral link: +5 XP when referral signs up
+  └─ Garage owner: +1 bid credit on referral
+
+ADMIN ➜ "Users / XP"
+  ├─ Adjust XP, Ban fraud, Export
+  └─ READ/WRITE: profiles, xp_events, referrals
+     RLS: admin_all
+
+
+7) OFFERS (Admin-curated)
+-------------------------
+USER ➜ "Offers" grid (read-only)
+
+ADMIN ➜ "Offers"
+  ├─ Actions: Create/Edit, Schedule, Feature, Expire, Export
+  └─ READ/WRITE: offers
+     RLS: admin_all
+
+
+8) DAILY CHALLENGES / MISSIONS
+------------------------------
+USER ➜ "Challenges"
+  ├─ Actions: Start, Complete, Claim
+  └─ READ/WRITE: challenges, challenge_progress, xp_events
+
+ADMIN ➜ "Challenges"
+  ├─ Actions: Edit challenge rules, Export
+  └─ READ/WRITE: challenges, challenge_progress
+     RLS: admin_all
+
+
+==================================
+B) REMAINING / UNIFIED ADMIN PAGES
+==================================
+
+9) VERIFICATION (Unified)
+-------------------------
+ADMIN ➜ "Verification" (tabs)
+  ├─ Garage Hub
+  ├─ Car Owner
+  ├─ Vendor
+  ├─ Each tab: Search, Filters(status/date), Approve, Reject, Edit, Notes, Export
+  └─ READ/WRITE: verification_requests, profiles (verification_status, badge_color), vendor_docs/garage_docs
+     RLS: admin_all
+     EVT: action:approve_verification|reject_verification
+
+10) NOTIFICATIONS CENTER (Push)
+-------------------------------
+ADMIN ➜ "Notifications" (tabs: Templates, Segments, Campaigns, Deliveries, Settings)
+  ├─ Create/Edit Template (body_json), Segment (rules_json)
+  ├─ Send Test, Schedule, Send Now
+  ├─ Filters: status/date; Export deliveries
+  └─ READ/WRITE: push_templates, push_segments, push_campaigns, push_deliveries, push_providers, user_push_settings, user_push_tokens
+     RPC: fn_push_preview, fn_push_resolve_segment, fn_push_schedule, fn_push_send_now, fn_push_mark_open
+     RLS: admin_all
+     EVT: action:send_push|schedule_push
+
+11) EMAIL HUB (SMTP)
+--------------------
+ADMIN ➜ "Email Hub" (tabs: Templates, Segments, Campaigns, Deliveries, SMTP Settings)
+  ├─ Create/Edit Template (html/text), Preview, Test Send
+  ├─ Schedule/Send, Filters (bounces/opens/clicks), Export
+  ├─ Settings: SMTP host/port/user/from, activate
+  └─ READ/WRITE: email_templates, email_segments, email_campaigns, email_deliveries, smtp_configs, user_email_settings, email_suppressions
+     RPC: fn_email_preview, fn_email_resolve_segment, fn_email_schedule, fn_email_send_now, fn_email_unsubscribe
+     Webhooks: open/click/bounce/complaint → update email_deliveries/suppressions
+     RLS: admin_all
+     EVT: action:send_email|schedule_email
+
+12) BOOSTING (Unified)
+----------------------
+ADMIN ➜ "Boosting"
+  ├─ Modules: Marketplace + Garage Hub
+  ├─ Queues: Pending, Active, Scheduled, Expired
+  ├─ Actions: Approve, Refund, Extend, Export
+  └─ READ/WRITE: boost_entitlements, wallet_transactions
+     STR: webhook confirms purchase → entitlement grant
+     RLS: admin_all
+     EVT: action:approve_boost|refund_boost
+
+13) USERS & ROLES
+-----------------
+ADMIN ➜ "Users"
+  ├─ Search, Filters(role/status/verified), Edit role/sub_role, Lock/Unlock, Export
+  └─ READ/WRITE: profiles
+     RLS: admin_all
+     EVT: action:update_role|lock_account
+
+14) CONTENT MODERATION
+----------------------
+ADMIN ➜ "Content"
+  ├─ Reports queue (posts/listings/comments/messages)
+  ├─ Actions: Take down, Warn, Ban, Export
+  └─ READ/WRITE: post_reports, listing_reports, moderation_actions
+     RLS: admin_all
+
+15) ANALYTICS / REPORTS
+-----------------------
+ADMIN ➜ "Analytics"
+  ├─ Metrics: Users growth, Revenue, Boosts, XP, Engagement (likes/comments/views), Deliveries (push/email), Events attendance
+  ├─ Filters: date range, module
+  ├─ Export
+  └─ READ: analytics_events, v_*_stats, rollups; WRITE: exports via fn_export_run
+     RLS: admin_all
+
+16) BRAND KIT
+-------------
+ADMIN ➜ "Brand Kit"
+  ├─ Logo, Colors, Typography, Email header/footer assets
+  └─ READ/WRITE: brand_assets (storage / references)
+     RLS: admin_all
+
+17) SETTINGS
+------------
+ADMIN ➜ "Settings"
+  ├─ Stripe keys (server only), Push configs, SMTP, AI bot controls, i18n, Themes
+  └─ WRITE via secure RPCs; never expose secrets to client
+     RLS: admin_all
+
+18) AUDIT & LOGS
+----------------
+ADMIN ➜ "Logs"
+  ├─ Audit trail, Analytics events
+  ├─ Filters: actor, entity, action, date; Export
+  └─ READ: audit_logs, analytics_events; WRITE: exports
+     RLS: admin_all
+
+
+======================
+C) REALTIME & COUNTERS
+======================
+COMMUNITY
+  post_likes ▲/▼      ➜ triggers or live counts → post_stats.like_count (RT)
+  comments insert     ➜ triggers or view counts → post_stats.comment_count (RT)
+  fn_register_post_view ➜ throttled dedupe → post_stats.view_count (RT)
+
+EVENTS
+  event_likes ▲/▼     ➜ event_stats.like_count (RT)
+  event_attendees add ➜ event_stats.attendee_count (RT)
+  event_views add     ➜ event_stats.view_count (RT)
+
+ADMIN VIEWS
+  Subscribe to post_stats / event_stats / deliveries to show true live numbers.
+
+
+========================
+D) EXPORTS (BY SCREENSHOT)
+========================
+Every Admin area showing “Export” or date filters:
+  - Communities, Marketplace, Garage Hub, Boosting, Verification, Vendor Registration,
+    Users & Roles, Content Moderation, Analytics, Push Deliveries, Email Deliveries,
+    Events/Attendance, Referrals/XP.
+  EXP: fn_export_run(kind, params{date_from, date_to, status, filters}) → file_path
+
+
+==================
+E) STRIPE INTEGRATION
+==================
+LISTING FEES & BOOSTS
+  Client → checkout session → STR webhook (checkout.session.completed,
+  invoice.paid, invoice.payment_failed, customer.subscription.updated, charge.refunded)
+  ➜ wallet_transactions, wallet_balance, boost_entitlements
+  EVT: billing events logged
+
+
+====================
+F) TELEMETRY & AUDIT
+====================
+Emit analytics_events for all views/actions, audit_logs for admin mutations.
+
+
+
+
+# Admin — Remaining Tabs & Cross‑App Connections
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+This document maps the rest of Admin sections to their data + connections.
+
+## 1) Dashboard
+- KPIs: Users, Verified Rate, Active Posts, Revenue, Views — **all from real tables**.
+- READ ➜ materialized views or live counts from `profiles`, `v_post_stats`, `market_listings`, `wallet_transactions`.
+
+## 2) Supabase
+- Link status, migrations summary, health checks (read-only).
+
+## 3) Auto-Approval Settings
+- Config flags per module (`auto_approve_posts`, `auto_approve_listings`, etc.) in `system_settings` table (bucket: `system-settings` for images).
+
+## 4) Content Management
+- Static pages (Terms/Privacy/FAQ) — READ/WRITE ➜ `content_pages` (+ versioning).
+
+## 5) Knowledge Base
+- Articles/Tags — READ/WRITE ➜ `kb_articles`, `kb_tags` with search + export.
+
+## 6) Referral Management
+- READ/WRITE ➜ `referrals`, links to XP (+5), and to `bid_wallet` (+1 credit if garage_owner).
+
+## 7) Marketplace (Admin)
+- Already covered; includes categories/attributes management: `mk_categories`, `mk_attributes`.
+
+## 8) Events & Routes
+- Route library if present: `routes`, `route_points`, link to `events`.
+
+## 9) Transactions / Refunds
+- READ/WRITE ➜ `wallet_transactions`; refunds create negative adjustments; export.
+
+## 10) Listings Approval
+- Consolidated moderation queue sourced from `market_listings` (`status in ('pending','rejected')`).
+
+## 11) Ads & Monetization
+- Placements, schedules, creatives — `ad_units`, `ad_campaigns`, `ad_creatives`, `ad_impressions`; export and analytics.
+
+## 12) Analytics Dashboard / SEO & Analytics
+- Aggregations across events; SEO sitemaps and meta presets stored in `seo_settings`.
+
+## 13) Security Center
+- Account lockouts, 2FA status, session audits — `security_events` + `audit_logs`.
+
+## 14) Support Center
+- Tickets, categories, SLAs — `support_tickets`, `support_messages`, `support_sla`; export.
+
+## 15) Legal & Consent
+- Policies versions, consent logs — `legal_policies`, `user_consents`; export.
+
+## 16) System Logs
+- `audit_logs`, `analytics_events` filters, export by date/actor/entity/action.
+
+
+
+
+
+ # Bid Repair — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## User (Car Owner / Browser)
+- Actions: **Create Bid (anonymous)**, **Rebid**, **Accept/Reject** → unlock **Messaging** (text/image/emoji/location)
+- READ/WRITE ➜ `bid_repair`, `messages` (post-accept), masked views during open phase
+- RLS ➜ owner_rw on own bids; **garage_owner cannot create bids**
+
+## Garage Owner
+- Actions: **Reply/Rebid (anonymous)**, **Wallet Credits**, **Top-up via Stripe**
+- READ/WRITE ➜ `bid_repair_replies`, `bid_wallet`, `wallet_transactions`
+
+## Admin (Bid Repair Management / Repair Bid Credits)
+- Views: **Open, Accepted, Closed, Disputes**
+- Actions: **Force-close, Refund credit, Export**
+- READ/WRITE ➜ `bid_repair`, `bid_repair_replies`, `bid_wallet`, `wallet_transactions`
+
+## Messaging Unlock
+- Policy: only when bid `status ∈ {accepted, closed}` can both parties message
+
+
+
+
+
+
+
+# Brand Kit — Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+**Supabase Buckets (env):**
+- `community-media` · `offers-media` · `marketplace-media` · `events-media` · `garagehub-media` · `bidrepair-media` · `import-media` · `profile-images` · `brand-assets` · `system-settings`
+
+## Tabs
+- **Logos** (Light/Dark/Mono)
+- **Colors / Palettes**
+- **Typography**
+- **Banners** (App/Web/Social covers)
+- **Email Headers/Footers**
+- **Watermarks/Overlays**
+- **Thumbnail Presets** (YouTube/Twitch/IG)
+- **Download/Publish**
+
+**Data**
+- READ/WRITE ➜ `brand_assets(type, file_ref, meta)` (bucket: `brand-assets` / `system-settings`)
+- Publishing updates global theme + email template defaults
+
+
+
+
+
+# Communities — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## User Frontend
+- Actions: **Create Post, Comment, Like, Save, Share, Report, Follow**
+- Tabs/Filters: All, Featured, Pinned, Categories/Tags, Search, Sort(Newest/Top)
+- RT: live likes/comments/views; threaded replies & edit/delete own comment
+
+**Data**
+- READ ➜ `posts`, `comments`, `v_post_stats`
+- WRITE ➜ `fn_create_post`, `fn_add_comment(post_id, body, parent_comment_id?)`, `fn_edit_comment`, `fn_delete_comment`,
+  `fn_toggle_like(post_id)`, `fn_toggle_save(post_id)`, `fn_register_post_view(post_id, anon_hash)`, `fn_report_post`
+- RLS ➜ `public_read_approved`, `owner_rw`, `admin_all`
+
+## Profile
+- **My Posts**, **My Comments**, **Saved Posts**
+
+## Admin (Community Management)
+- Queues: **Pending, Approved, Rejected, Reported**
+- Actions: **Approve/Reject, Edit, Delete, Pin, Feature**
+- Analytics: **true counts** from `v_post_stats` (or `post_stats` counter table)
+- EXP ➜ by date/status/category
+- AI Auto-Comment: On approval, if none exists → insert AI comment; reply only within that thread
+
+
+
+
+
+
+
+# Daily Challenges — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## User
+- Actions: **Start**, **Complete**, **Claim Reward**
+- READ/WRITE ➜ `challenges`, `challenge_progress`, `xp_events`
+
+## Admin (Daily Challenges / XP Management)
+- Actions: **Create/Edit Challenge**, **Set Rewards**, **Export**
+- READ/WRITE ➜ `challenges`, `challenge_progress`, `xp_events`
+
+
+
+
+
+
+
+
+
+# Garage Hub — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+**Supabase Buckets (env):**
+- `community-media` · `offers-media` · `marketplace-media` · `events-media` · `garagehub-media` · `bidrepair-media` · `import-media` · `profile-images` · `brand-assets` · `system-settings`
+
+## User Frontend
+- Actions: **Create Garage**, **Edit**, **Request Verification**, **Contact/Book**, **Boost**
+- Filters: Services, Radius, Rating, Verified
+- Badges: Verified Garage, Featured/Boosted
+
+**Data**
+- READ ➜ `garages`, `v_garage_stats`, `garage_media`
+- WRITE ➜ `garages`, `garage_media` (bucket: `garagehub-media`), `verification_requests`
+- RLS ➜ `owner_rw` (garage_owner), `public_read_approved`, `admin_all`
+- STR ➜ `fn_calculate_fee('garage')` → checkout → webhook → `boost_entitlements`
+- EVT ➜ view:garage_hub, action:create_garage|request_verification|boost_request
+
+## Profile
+- **My Garage**: READ own `garages`, verification statuses
+
+## Admin (Garage Verification / Boost Management)
+- Tabs: **Pending, Approved, Rejected**
+- Actions: **Approve/Reject**, **Request Docs**, **Notes**, **Export**, **Boost Approvals**
+- READ/WRITE ➜ `verification_requests`, `garages`, `boost_entitlements`
+- RLS ➜ `admin_all`
+
+
+
+
+
+
+
+# Leaderboard, XP & Referrals — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## User
+- Leaderboard views: **Weekly, Monthly, All-time**
+
+## Profile
+- **Badges & XP**, **Referral Link** (+5 XP on referral signup; if referrer is garage_owner → +1 bid credit)
+
+## Admin (Users & Access / XP Management / Referral Management)
+- Adjust XP, Review Referrals, Export
+- READ/WRITE ➜ `profiles.xp_points`, `xp_events`, `referrals`
+
+
+
+
+
+
+
+# Marketplace — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+**Supabase Buckets (env):**
+- `community-media` · `offers-media` · `marketplace-media` · `events-media` · `garagehub-media` · `bidrepair-media` · `import-media` · `profile-images` · `brand-assets` · `system-settings`
+
+## User Frontend (Marketplace)
+- Tabs: **All, Featured, Cars, Parts**
+- Filters: Make/Model, Year, Price, Mileage, Location Radius, Sort(Newest/Price/Distance)
+- Actions: **Create Listing, Edit, Delete, Mark Sold, Favorite/Unfavorite, Share, Report, Boost/Feature**
+- Badges: Featured, Boosted, Verified Vendor
+- RT: live counters for **views, saves**
+
+**Data**
+- READ ➜ `market_listings`, `v_listing_stats` (or `listing_stats` counters), `listing_media`
+- WRITE ➜ `market_listings`, `listing_media` (bucket: `marketplace-media`), `fn_toggle_listing_save(listing_id)`, `fn_register_listing_view(listing_id, anon_hash)`
+- RLS ➜ `owner_rw` on own listings; `public_read_approved` for approved listings; `admin_all` for moderators
+- STR ➜ `fn_calculate_fee('car'|'parts'|'garage', amount?)` → Checkout → **webhooks** (`checkout.session.completed`, `invoice.paid`, `charge.refunded`) → `wallet_transactions`, `entitlements(boost_entitlements)`
+- EVT ➜ view:marketplace, action:create|edit|delete|mark_sold|save|share|report|boost_request
+
+## User Profile Linkage
+- **My Listings**: READ own `market_listings` (+status, views, saves)
+- **Favorites**: READ `listing_saves` where `user_id = auth.uid()`
+
+## Admin (Marketplace / Listings Approval / Boost Management / Listing & Boost Management)
+- Queues: **Pending, Approved, Rejected, Takedowns**
+- Actions: **Approve/Reject, Edit, Delete, Feature/Pin, Take Down with reason**
+- Boosting: **Pending/Active/Scheduled/Expired**, **Approve/Refund/Extend**
+- EXP ➜ listings & boosts by status/date/category
+- READ/WRITE ➜ `market_listings`, `boost_entitlements`, `wallet_transactions`
+- RLS ➜ `admin_all`
+- EVT ➜ action:approve_listing|reject_listing|feature|takedown|approve_boost|refund_boost
+
+## Schema (Add if missing)
+- `market_listings(id, owner_id, type['car'|'parts'], title, desc, price, make, model, year, mileage, location, status['pending'|'approved'|'rejected'|'removed'], featured bool, boosted bool, created_at, ...)`
+- `listing_media(id, listing_id, file_ref, bucket='marketplace-media')`
+- `listing_saves(listing_id, user_id) UNIQUE(listing_id,user_id)`
+- `listing_views(listing_id, viewer_id?, anon_hash?, viewed_at)`
+- `listing_stats(listing_id PK, save_count, view_count, updated_at)` **or** `v_listing_stats` view
+- `boost_entitlements(id, entity='listing', entity_id, start_at, end_at, status)`
+
+## RPCs
+- `fn_calculate_fee(kind, amount)` — Car: **AED 50 + 5% VAT**, Parts: **8%**, Garage: **AED 100 + 5% VAT**
+- `fn_toggle_listing_save`, `fn_register_listing_view`
+- Admin: `fn_admin_set_listing_status`, `fn_admin_feature_pin`, `fn_admin_boost_approve(ref)`, `fn_admin_boost_refund(ref)`
+
+
+
+
+
+
+
+
+
+# Notifications (Push Center + Email Hub) — Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## Push Center
+- Tabs: **Templates, Segments, Campaigns, Deliveries, Providers/Settings**
+- READ/WRITE ➜ `push_templates`, `push_segments`, `push_campaigns`, `push_deliveries`, `push_providers`, `user_push_tokens`, `user_push_settings`
+- RPCs ➜ `fn_push_preview`, `fn_push_resolve_segment`, `fn_push_schedule`, `fn_push_send_now`, `fn_push_mark_open`
+- No fake numbers: deliveries & opens from `push_deliveries`
+- EXP
+
+## Email Hub (SMTP)
+- Tabs: **Templates, Segments, Campaigns, Deliveries, SMTP Settings**
+- READ/WRITE ➜ `email_templates`, `email_segments`, `email_campaigns`, `email_deliveries`, `smtp_configs`, `email_suppressions`, `user_email_settings`
+- RPCs ➜ `fn_email_preview`, `fn_email_resolve_segment`, `fn_email_schedule`, `fn_email_send_now`, `fn_email_unsubscribe`
+- Webhooks update deliveries (open/click/bounce/complaint)
+- EXP
+
+
+
+
+
+
+
+# Offers & Coupons — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## User
+- View Offers grid (admin-curated), Save/Share
+
+## Admin (Offers & Coupons)
+- Actions: **Create/Edit**, **Schedule**, **Feature**, **Expire**, **Export**
+- READ/WRITE ➜ `offers` (+ media in `offers-media`), schedule & feature flags
+- RLS ➜ `admin_all`
+
+
+
+
+
+
+
+# Users & Access + Verifications — Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## Users & Access
+- Search, Filters(role/status/verified), Edit role/sub_role, Lock/Unlock, Export
+- READ/WRITE ➜ `profiles`
+
+## Vehicle Verification / Garage Verification / Vendor Registration  (Unified Verification)
+- Tabs: **Car Owner**, **Garage Hub**, **Vendor**
+- Actions: **Approve/Reject**, **Edit**, **Notes**, **Request Docs**, **Export**
+- READ/WRITE ➜ `verification_requests`, `profiles(verification_status,badge_color,sub_role)`, `vehicle_docs`, `garage_docs`, `vendor_docs`
+
+
+
+
+
+
+
+ 
+
+
+
+# Wallet & Transactions — User ↔ Profile ↔ Admin Wiring
+
+_Generated: 2025-11-02T14:25:43.493067Z_
+
+**Legend:** READ ➜ table/view/RPC · WRITE ➜ mutation/RPC · RLS · RT (realtime) · STR (Stripe) · EXP (export) · EVT (telemetry/audit)
+
+
+## User
+- Wallet balance, Transactions, Assign boost to listing/garage
+
+## Admin (Transactions / Refunds)
+- Reconciliation, Refunds, Export
+- READ/WRITE ➜ `wallet_transactions`, `wallet_balances`, `boost_entitlements`
+- STR Webhooks: `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `charge.refunded`
+
+
+

@@ -1,0 +1,309 @@
+{
+  "metadata": {
+    "generated": "2024-10-26",
+    "branch": "feat/full-db-refactor-supabase",
+    "total_pages": 100,
+    "total_components": 150,
+    "hardcoded_sources": 87,
+    "tables_needed": 83
+  },
+  "user_pages": {
+    "authentication": {
+      "count": 9,
+      "pages": [
+        {
+          "name": "WelcomePage",
+          "path": "/auth/WelcomePage_Wired.tsx",
+          "hardcoded_data": [],
+          "tables": ["profiles"],
+          "wired": true
+        },
+        {
+          "name": "LoginPage",
+          "path": "/auth/LoginPage_Wired.tsx",
+          "hardcoded_data": [],
+          "tables": ["profiles", "sessions"],
+          "wired": true
+        },
+        {
+          "name": "SignupPage",
+          "path": "/auth/SignupPage_Wired.tsx",
+          "hardcoded_data": [],
+          "tables": ["profiles"],
+          "wired": true
+        },
+        {
+          "name": "RoleSelectionPage",
+          "path": "/auth/RoleSelectionPage_Wired.tsx",
+          "hardcoded_data": ["roles_array"],
+          "tables": ["user_roles", "role_types"],
+          "wired": false
+        },
+        {
+          "name": "VerifyCarOwnerPage",
+          "path": "/auth/VerifyCarOwnerPage_Wired.tsx",
+          "hardcoded_data": ["car_brands", "emirates"],
+          "tables": ["vehicle_verifications", "car_brands", "locations"],
+          "wired": false
+        },
+        {
+          "name": "VerifyGarageOwnerPage",
+          "path": "/auth/VerifyGarageOwnerPage_Wired.tsx",
+          "hardcoded_data": ["services", "locations"],
+          "tables": ["garage_verifications", "service_categories", "locations"],
+          "wired": false
+        },
+        {
+          "name": "OnboardingPage",
+          "path": "/onboarding/OnboardingPage_Wired.tsx",
+          "hardcoded_data": ["onboarding_steps"],
+          "tables": ["onboarding_configs"],
+          "wired": false
+        }
+      ]
+    },
+    "core_features": {
+      "count": 10,
+      "pages": [
+        {
+          "name": "HomePage",
+          "path": "/HomePage_Wired.tsx",
+          "hardcoded_data": ["banner_data"],
+          "tables": ["posts", "banners", "trending_topics"],
+          "wired": "partial"
+        },
+        {
+          "name": "CommunitiesPage",
+          "path": "/CommunitiesPage_Wired.tsx",
+          "hardcoded_data": ["sample_posts", "tags"],
+          "tables": ["communities", "posts", "tags", "community_members"],
+          "wired": "partial"
+        },
+        {
+          "name": "MarketplacePage",
+          "path": "/MarketplacePage_Wired.tsx",
+          "hardcoded_data": ["sample_listings"],
+          "tables": ["marketplace_listings", "listing_images"],
+          "wired": "partial"
+        },
+        {
+          "name": "GarageHubPage",
+          "path": "/GarageHubPage_Wired.tsx",
+          "hardcoded_data": ["sample_garages"],
+          "tables": ["garages", "garage_services", "garage_media"],
+          "wired": "partial"
+        },
+        {
+          "name": "EventsPage",
+          "path": "/EventsPage_Wired.tsx",
+          "hardcoded_data": [],
+          "tables": ["events", "event_registrations"],
+          "wired": true
+        },
+        {
+          "name": "OffersPage",
+          "path": "/OffersPage_Wired.tsx",
+          "hardcoded_data": ["sample_offers"],
+          "tables": ["offers", "offer_images", "offer_redemptions"],
+          "wired": false
+        },
+        {
+          "name": "LeaderboardPage",
+          "path": "/LeaderboardPage_Wired.tsx",
+          "hardcoded_data": ["weekly_leaderboard"],
+          "tables": ["xp_events", "leaderboard_daily", "leaderboard_monthly"],
+          "wired": false
+        },
+        {
+          "name": "SearchPage",
+          "path": "/SearchPage_Wired.tsx",
+          "hardcoded_data": [],
+          "tables": ["all_searchable_tables"],
+          "wired": true
+        },
+        {
+          "name": "InstantMeetupPage",
+          "path": "/InstantMeetupPage_Wired.tsx",
+          "hardcoded_data": ["sample_meetups"],
+          "tables": ["meetups", "meetup_participants"],
+          "wired": false
+        },
+        {
+          "name": "LegalHubPage",
+          "path": "/LegalHubPage_Wired.tsx",
+          "hardcoded_data": ["legal_sections"],
+          "tables": ["legal_documents", "faq_items"],
+          "wired": false
+        }
+      ]
+    }
+  },
+  "admin_pages": {
+    "count": 57,
+    "categories": [
+      "core_admin",
+      "content_management",
+      "marketplace_management",
+      "garage_services",
+      "offers_promotions",
+      "events",
+      "payments_finance",
+      "gamification",
+      "verification",
+      "communication",
+      "advertising"
+    ]
+  },
+  "hardcoded_data_sources": {
+    "high_priority": [
+      {
+        "file": "/utils/carData.ts",
+        "type": "car_brands_models",
+        "lines": 500,
+        "affects_components": 15,
+        "migration": "car_brands, car_models tables"
+      },
+      {
+        "file": "/utils/chineseCarData.ts",
+        "type": "extended_car_data",
+        "lines": 300,
+        "affects_components": 10,
+        "migration": "car_brands, car_models tables"
+      },
+      {
+        "file": "/utils/dailyChallenges.ts",
+        "type": "challenge_definitions",
+        "lines": 200,
+        "affects_components": 2,
+        "migration": "daily_challenges table"
+      },
+      {
+        "file": "/utils/knowledgeBase.ts",
+        "type": "faq_kb_articles",
+        "lines": 150,
+        "affects_components": 2,
+        "migration": "faq_items, kb_articles tables"
+      }
+    ],
+    "component_level": [
+      {
+        "component": "MarketplacePage",
+        "data": "sample_listings",
+        "migration": "marketplace_listings table"
+      },
+      {
+        "component": "CommunitiesPage",
+        "data": "sample_posts",
+        "migration": "posts table"
+      },
+      {
+        "component": "OffersPage",
+        "data": "sample_offers",
+        "migration": "offers table"
+      },
+      {
+        "component": "LeaderboardPage",
+        "data": "weekly_leaderboard",
+        "migration": "leaderboard_daily, leaderboard_monthly tables"
+      },
+      {
+        "component": "ProfilePage",
+        "data": "badges_achievements",
+        "migration": "achievements, user_achievements tables"
+      },
+      {
+        "component": "GarageHubPage",
+        "data": "sample_garages",
+        "migration": "garages table"
+      },
+      {
+        "component": "RepairBidPage",
+        "data": "sample_requests_bids",
+        "migration": "repair_requests, repair_bids tables"
+      }
+    ]
+  },
+  "database_schema": {
+    "tables_count": 83,
+    "categories": {
+      "authentication_users": 6,
+      "communities_social": 8,
+      "marketplace": 5,
+      "garage_hub": 6,
+      "events_meetups": 4,
+      "offers_promotions": 4,
+      "xp_gamification": 7,
+      "wallet_payments": 10,
+      "system_config": 7,
+      "content_assets": 10,
+      "verifications": 3,
+      "messaging": 4,
+      "admin_support": 9
+    }
+  },
+  "storage_buckets": {
+    "required": 7,
+    "buckets": [
+      {
+        "name": "avatars",
+        "max_size_mb": 5,
+        "formats": ["JPG", "PNG", "WEBP"],
+        "access": "public_read_approved"
+      },
+      {
+        "name": "listing-images",
+        "max_size_mb": 10,
+        "max_count_per_listing": 10,
+        "formats": ["JPG", "PNG", "WEBP"],
+        "access": "public_read_approved"
+      },
+      {
+        "name": "brand-assets",
+        "max_size_mb": 5,
+        "formats": ["SVG", "PNG"],
+        "access": "public_read"
+      },
+      {
+        "name": "attachments",
+        "max_size_mb": 25,
+        "formats": ["PDF", "JPG", "PNG"],
+        "access": "private_owner_admin"
+      },
+      {
+        "name": "event-images",
+        "max_size_mb": 10,
+        "formats": ["JPG", "PNG", "WEBP"],
+        "access": "public_read_approved"
+      },
+      {
+        "name": "garage-images",
+        "max_size_mb": 10,
+        "formats": ["JPG", "PNG", "WEBP"],
+        "access": "public_read_verified"
+      },
+      {
+        "name": "offer-images",
+        "max_size_mb": 10,
+        "formats": ["JPG", "PNG", "WEBP"],
+        "access": "public_read_active"
+      }
+    ]
+  },
+  "role_matrix": {
+    "roles": ["browser", "user", "garage_owner", "vendor", "editor", "admin"],
+    "features": {
+      "view_listings": ["all"],
+      "create_listing": ["user", "garage_owner", "vendor", "editor", "admin"],
+      "view_posts": ["all"],
+      "create_post": ["user", "garage_owner", "vendor", "editor", "admin"],
+      "create_garage": ["garage_owner", "editor", "admin"],
+      "bid_on_repair": ["garage_owner", "editor", "admin"],
+      "request_repair": ["user", "garage_owner", "editor", "admin"],
+      "create_offer": ["garage_owner", "vendor", "editor", "admin"],
+      "moderate_content": ["editor", "admin"],
+      "approve_listings": ["editor", "admin"],
+      "manage_users": ["admin"],
+      "access_admin": ["editor", "admin"]
+    }
+  }
+}

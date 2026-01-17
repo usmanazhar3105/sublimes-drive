@@ -1,0 +1,10 @@
+Admin Tab,UI Button/Action,Component File,Handler,API Route,DB Table/Function,Policy OK?,Status,Notes
+Community,Approve Post,ALL_ADMIN_PAGES_WIRED.tsx,updatePostStatus,/posts/:id/moderate,posts,OK,OK,Now uses apiCall to Edge endpoint
+Community,Delete Post,ALL_ADMIN_PAGES_WIRED.tsx,deletePost,/posts/:id,posts,OK,OK,Now uses apiCall to Edge endpoint
+Community,Pin/Unpin,ALL_ADMIN_PAGES_WIRED.tsx,togglePin,/posts/:id/pin,posts,OK,OK,Now uses apiCall to Edge endpoint
+Marketplace,Approve Listing,ALL_ADMIN_PAGES_WIRED.tsx,updateListingStatus,/marketplace/:id/approve,market_listings,OK,OK,Now uses apiCall to Edge endpoint
+Marketplace,Delete Listing,ALL_ADMIN_PAGES_WIRED.tsx,deleteListing,/marketplace/:id,market_listings,OK,OK,Now uses apiCall to Edge endpoint
+Offers,Create Checkout,OfferPaymentModal.tsx,publicApiCall('/stripe/create-offer-checkout'),/stripe/create-offer-checkout,Edge Function,OK,OK,Refactored to centralized client
+Payments,Create Checkout,StripePaymentPage_Wired.tsx,publicApiCall('/stripe/create-checkout'),/stripe/create-checkout,Edge Function,OK,OK,Refactored to centralized client
+Profiles,Upload Avatar,ProfileSettingsPage_Wired.tsx,uploadImage(file,'avatars','profile'),storage: profile-images,RLS,OK,OK,Uses signed URLs for private buckets
+Analytics,Counts Overview,ALL_ADMIN_PAGES_WIRED.tsx,fetchAnalytics,(none, direct DB selects),profiles,posts,market_listings,wallet_transactions,OK,OK,No endpoints required

@@ -1,0 +1,1 @@
+// Supabase typegen output placeholder

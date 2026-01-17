@@ -1,0 +1,108 @@
+Let me check the existing Stripe implementation in both the web and mobile apps:
+
+[12 tools called]
+
+Now I have a clear picture. Let me create enhanced Stripe payment services for both web and mobile apps:
+
+[7 tools called]
+
+Now let me update the web app's usePayments hook and create a payment component:
+
+[5 tools called]
+
+I've enhanced the Stripe payment integration for both the web and mobile apps. Here's a summary:
+
+## ✅ Stripe Payment Integration Complete
+
+### Web App (`src/`)
+
+**New Files Created:**
+
+| File | Purpose |
+|------|---------|
+| `src/lib/stripe.ts` | Core Stripe service with all payment functions |
+| `src/components/payments/WalletTopUpModal.tsx` | Modal for wallet top-up with Stripe |
+| `src/components/payments/BoostPurchaseModal.tsx` | Modal for purchasing listing/garage boosts |
+| `src/components/payments/index.ts` | Component exports |
+
+**Updated Files:**
+- `src/src/hooks/usePayments.ts` - Enhanced with Stripe integration
+
+### Mobile App (`apps/mobile/`)
+
+**New Files Created:**
+
+| File | Purpose |
+|------|---------|
+| `packages/api/src/payments.ts` | Shared payment API functions |
+| `apps/mobile/src/hooks/usePayments.ts` | Mobile payment hooks with Stripe |
+
+**Updated Files:**
+- `apps/mobile/app/wallet/index.tsx` - Full Stripe integration with UI
+- `apps/mobile/src/hooks/index.ts` - Exports payment hooks
+
+---
+
+## 🔧 Configuration Required
+
+### 1. Environment Variables
+
+**Web App (`.env`):**
+```env
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key
+```
+
+**Mobile App (`apps/mobile/.env`):**
+```env
+# No client-side Stripe key needed - uses server-side checkout
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 2. Supabase Edge Function Secrets
+
+In Supabase Dashboard → Settings → Edge Functions:
+```
+STRIPE_SECRET_KEY=sk_test_your_secret_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+```
+
+### 3. Stripe Webhook
+
+Configure webhook in Stripe Dashboard:
+- URL: `https://your-project.supabase.co/functions/v1/stripe-webhook`
+- Events: `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`
+
+---
+
+## 💳 Features Implemented
+
+| Feature | Web | Mobile |
+|---------|-----|--------|
+| Wallet Top-up | ✅ | ✅ |
+| Listing Boost Purchase | ✅ | ✅ |
+| Garage Boost Purchase | ✅ | ✅ |
+| Listing Fee Payment | ✅ | ✅ |
+| Payment History | ✅ | ✅ |
+| Invoices | ✅ | ✅ |
+| Deep Link Callbacks | N/A | ✅ |
+
+---
+
+## Usage Examples
+
+**Web - Top Up Wallet:**
+```tsx
+import { WalletTopUpModal } from '@/components/payments';
+
+<WalletTopUpModal 
+  isOpen={showModal} 
+  onClose={() => setShowModal(false)} 
+/>
+```
+
+**Mobile - Top Up Wallet:**
+```tsx
+const { mutateAsync: topUp } = useTopUpWallet();
+await topUp({ userId: user.id, amount: 100 });
+```

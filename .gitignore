@@ -1,0 +1,94 @@
+# Dependencies
+node_modules/
+modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production
+/build
+/dist
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Deployment configs (contain sensitive credentials)
+deploy-config.json
+*.env
+.env.*
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# OS
+Thumbs.db
+
+# Exclude markdown files (except root README.md)
+*.md
+!README.md
+**/*.md
+docs/**/*.md
+src/**/*.md
+
+# Exclude SQL files
+*.sql
+**/*.sql
+*.psql
+**/*.psql
+
+# Exclude app development folder
+app development/
+app-development/
+"app development/"
+
+# Exclude test files
+testsprite_tests/
+
+# Exclude large files (>50MB)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.dmg
+*.iso
+*.img
+AA- Transfer.zip
+AA- Transfer/
+deployment-package.zip
+
+# Exclude secrets and sensitive files
+**/secrets/**
+**/*secret*
+**/*key*
+**/*password*
+**/*credential*
+**/*token*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks

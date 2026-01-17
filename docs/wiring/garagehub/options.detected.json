@@ -1,0 +1,481 @@
+{
+  "source": "Master Prompt Specification + Typical Garage Hub UI Patterns",
+  "generated_at": "2025-11-05T04:30:00Z",
+  "note": "Screenshots not provided - using comprehensive specification from prompt",
+  "detected_options": [
+    {
+      "option_id": "garagehub.nav.tab",
+      "surface": "User",
+      "description": "Main garage hub navigation tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "garagehub.search.input",
+      "surface": "User",
+      "description": "Search garages/services",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "garagehub.filters.brand",
+      "surface": "User",
+      "description": "Filter by vehicle brand specialization",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "garagehub.filters.model",
+      "surface": "User",
+      "description": "Filter by vehicle model specialization",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "garagehub.filters.service_type",
+      "surface": "User",
+      "description": "Filter by service type",
+      "ui_element": "multiselect"
+    },
+    {
+      "option_id": "garagehub.filters.radius_km",
+      "surface": "User",
+      "description": "Radius filter in kilometers",
+      "ui_element": "slider",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "garagehub.filters.open_now",
+      "surface": "User",
+      "description": "Filter garages open now",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "garagehub.sort.distance",
+      "surface": "User",
+      "description": "Sort by distance",
+      "ui_element": "select_option",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "garagehub.sort.rating",
+      "surface": "User",
+      "description": "Sort by rating",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "garagehub.sort.price_estimate",
+      "surface": "User",
+      "description": "Sort by price estimate",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "garagehub.map.toggle",
+      "surface": "User",
+      "description": "Toggle map view",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "garagehub.map.recenter",
+      "surface": "User",
+      "description": "Recenter map",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "garagehub.map.apply_bounds",
+      "surface": "User",
+      "description": "Apply map bounds as filter",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "garage.card.view",
+      "surface": "User",
+      "description": "View garage details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "garage.card.call",
+      "surface": "User",
+      "description": "Call garage",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "garage.card.whatsapp",
+      "surface": "User",
+      "description": "WhatsApp garage",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "garage.card.save",
+      "surface": "User",
+      "description": "Save garage to favorites",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "garage.card.book",
+      "surface": "User",
+      "description": "Book service/create job",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "job.create.start",
+      "surface": "User",
+      "description": "Start job creation wizard",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "job.create.vehicle_select",
+      "surface": "User",
+      "description": "Select vehicle from saved vehicles",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "job.create.vehicle_add",
+      "surface": "User",
+      "description": "Add new vehicle",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "job.create.service_select",
+      "surface": "User",
+      "description": "Select service type needed",
+      "ui_element": "multiselect"
+    },
+    {
+      "option_id": "job.create.describe_issue",
+      "surface": "User",
+      "description": "Describe repair issue",
+      "ui_element": "textarea"
+    },
+    {
+      "option_id": "job.create.photos_upload",
+      "surface": "User",
+      "description": "Upload photos of issue",
+      "ui_element": "component",
+      "requires_storage": "garagehub-media"
+    },
+    {
+      "option_id": "job.create.location_set",
+      "surface": "User",
+      "description": "Set job location",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "job.create.preferred_time",
+      "surface": "User",
+      "description": "Set preferred time range",
+      "ui_element": "datetime_picker"
+    },
+    {
+      "option_id": "job.create.submit",
+      "surface": "User",
+      "description": "Submit job for bids",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "job.detail.timeline",
+      "surface": "User",
+      "description": "Job status timeline",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "job.detail.gallery",
+      "surface": "User",
+      "description": "Job photos gallery",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "job.detail.location_map",
+      "surface": "User",
+      "description": "Job location map",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "job.detail.cancel",
+      "surface": "User",
+      "description": "Cancel job",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "job.detail.reopen",
+      "surface": "User",
+      "description": "Reopen cancelled job",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "job.detail.chat",
+      "surface": "User",
+      "description": "Chat with garage",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "job.detail.award_bid",
+      "surface": "User",
+      "description": "Award job to a bidder",
+      "ui_element": "button",
+      "requires_edge_function": "gh-award-bid"
+    },
+    {
+      "option_id": "job.detail.pay_now",
+      "surface": "User",
+      "description": "Pay for completed job",
+      "ui_element": "button",
+      "requires_edge_function": "gh-payment-webhook"
+    },
+    {
+      "option_id": "job.detail.review",
+      "surface": "User",
+      "description": "Leave garage review",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "bid.list.sort.price",
+      "surface": "User",
+      "description": "Sort bids by price",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "bid.list.sort.eta",
+      "surface": "User",
+      "description": "Sort bids by ETA",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "bid.view.download_quote",
+      "surface": "User",
+      "description": "Download bid quote PDF",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "bid.view.message_vendor",
+      "surface": "User",
+      "description": "Message bidding vendor",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "bid.view.accept",
+      "surface": "User",
+      "description": "Accept bid",
+      "ui_element": "button",
+      "requires_edge_function": "gh-award-bid"
+    },
+    {
+      "option_id": "bid.view.decline",
+      "surface": "User",
+      "description": "Decline bid",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "garagehub.empty.no_garages",
+      "surface": "User",
+      "description": "No garages found empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "job.empty.no_bids",
+      "surface": "User",
+      "description": "No bids received empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "job.empty.no_jobs",
+      "surface": "User",
+      "description": "No jobs created empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "garagehub.empty.clear_filters",
+      "surface": "User",
+      "description": "Clear all filters",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "profile.garagehub.my_jobs",
+      "surface": "Profile",
+      "description": "My repair jobs tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.my_bids",
+      "surface": "Profile",
+      "description": "My bids (for vendors)",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.saved_garages",
+      "surface": "Profile",
+      "description": "Saved/favorited garages",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.vehicles",
+      "surface": "Profile",
+      "description": "My vehicles",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.wallet",
+      "surface": "Profile",
+      "description": "Wallet balance",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.invoices",
+      "surface": "Profile",
+      "description": "Invoices/receipts",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.reviews",
+      "surface": "Profile",
+      "description": "My reviews given",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.garagehub.settings",
+      "surface": "Profile",
+      "description": "Garage hub settings",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.gh.queue.jobs_pending",
+      "surface": "Admin",
+      "description": "Pending jobs queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.gh.queue.garages_pending_verification",
+      "surface": "Admin",
+      "description": "Garages awaiting verification",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.gh.queue.bids_flagged",
+      "surface": "Admin",
+      "description": "Flagged bids queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.gh.job.approve",
+      "surface": "Admin",
+      "description": "Approve job",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.job.reject",
+      "surface": "Admin",
+      "description": "Reject job",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.garage.verify",
+      "surface": "Admin",
+      "description": "Verify garage",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.garage.suspend",
+      "surface": "Admin",
+      "description": "Suspend garage",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.bid.suspend",
+      "surface": "Admin",
+      "description": "Suspend bid",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.feature.garage",
+      "surface": "Admin",
+      "description": "Feature garage",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.unfeature.garage",
+      "surface": "Admin",
+      "description": "Unfeature garage",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.bulk.select_all",
+      "surface": "Admin",
+      "description": "Bulk select all",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "admin.gh.bulk.approve",
+      "surface": "Admin",
+      "description": "Bulk approve selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.bulk.reject",
+      "surface": "Admin",
+      "description": "Bulk reject selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.bulk.export_csv",
+      "surface": "Admin",
+      "description": "Export to CSV",
+      "ui_element": "button",
+      "requires_edge_function": "gh-export-csv"
+    },
+    {
+      "option_id": "admin.gh.edit.job",
+      "surface": "Admin",
+      "description": "Edit job details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.edit.garage",
+      "surface": "Admin",
+      "description": "Edit garage details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.gh.audit_log",
+      "surface": "Admin",
+      "description": "View audit log",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.gh.filters.status",
+      "surface": "Admin",
+      "description": "Filter by status",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.gh.filters.service_type",
+      "surface": "Admin",
+      "description": "Filter by service type",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.gh.filters.city",
+      "surface": "Admin",
+      "description": "Filter by city",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.gh.search.input",
+      "surface": "Admin",
+      "description": "Admin search input",
+      "ui_element": "input"
+    }
+  ],
+  "summary": {
+    "total_options": 79,
+    "by_surface": {
+      "User": 48,
+      "Profile": 8,
+      "Admin": 23
+    },
+    "requires_postgis": 7,
+    "requires_storage": 1,
+    "requires_edge_functions": 4
+  }
+}
+

@@ -1,0 +1,92 @@
+{
+  "scan_timestamp": "2025-10-24T00:00:00Z",
+  "total_findings": 87,
+  "priority_areas": {
+    "mobile_profile": {
+      "path": "components/ProfilePage.tsx",
+      "findings": [
+        {
+          "line": 45,
+          "type": "inline_stats",
+          "symbol": "profileStats",
+          "reason": "Hard-coded follower/following counts",
+          "snippet": "const profileStats = { followers: 1234, following: 567, posts: 89 }"
+        },
+        {
+          "line": 78,
+          "type": "menu_array",
+          "symbol": "profileOptions",
+          "reason": "Static menu with badge counts",
+          "snippet": "const profileOptions = [{ label: 'My Listings', count: 12 }, ...]"
+        }
+      ]
+    },
+    "communities": {
+      "path": "components/CommunitiesPage.tsx",
+      "findings": [
+        {
+          "line": 23,
+          "type": "data_array",
+          "symbol": "mockCommunities",
+          "reason": "Hard-coded community list",
+          "snippet": "const mockCommunities = [{ id: '1', name: 'BMW UAE', members: 1500 }, ...]"
+        }
+      ]
+    },
+    "marketplace": {
+      "path": "components/MarketplacePage.tsx",
+      "findings": [
+        {
+          "line": 34,
+          "type": "data_array",
+          "symbol": "sampleListings",
+          "reason": "Mock marketplace listings",
+          "snippet": "const sampleListings = [{ id: '1', title: '2023 BMW M3', price: 250000 }, ...]"
+        }
+      ]
+    },
+    "garage_hub": {
+      "path": "components/GarageHubPage.tsx",
+      "findings": [
+        {
+          "line": 29,
+          "type": "data_array",
+          "symbol": "garages",
+          "reason": "Static garage list",
+          "snippet": "const garages = [{ id: '1', name: 'Premium Auto', rating: 4.8 }, ...]"
+        }
+      ]
+    },
+    "events": {
+      "path": "components/EventsPage.tsx",
+      "findings": [
+        {
+          "line": 41,
+          "type": "data_array",
+          "symbol": "upcomingEvents",
+          "reason": "Mock event data",
+          "snippet": "const upcomingEvents = [{ id: '1', title: 'Car Meet Dubai', date: '...' }, ...]"
+        }
+      ]
+    },
+    "notifications": {
+      "path": "components/notifications/NotificationsPage.tsx",
+      "findings": [
+        {
+          "line": 18,
+          "type": "data_array",
+          "symbol": "demoNotifications",
+          "reason": "Hard-coded notification list",
+          "snippet": "const demoNotifications = [{ id: '1', type: 'like', message: '...' }, ...]"
+        }
+      ]
+    }
+  },
+  "recommendations": [
+    "Replace all mock data with Supabase hooks",
+    "Create useProfile, useCommunities, useListings, useGarages, useEvents hooks",
+    "Wire notification bell count to real database query",
+    "Update mobile profile to fetch live stats",
+    "Remove all inline arrays used as data sources"
+  ]
+}

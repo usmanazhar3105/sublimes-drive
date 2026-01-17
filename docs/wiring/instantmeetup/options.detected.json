@@ -1,0 +1,417 @@
+{
+  "source": "Master Prompt Specification + Typical Instant Meetup UI Patterns",
+  "generated_at": "2025-11-05T04:45:00Z",
+  "note": "Screenshots not provided - using comprehensive specification from prompt",
+  "detected_options": [
+    {
+      "option_id": "meetup.nav.tab",
+      "surface": "User",
+      "description": "Main instant meetup navigation tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "meetup.search.input",
+      "surface": "User",
+      "description": "Search meetups by title/description",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "meetup.filters.category",
+      "surface": "User",
+      "description": "Filter by meetup category",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "meetup.filters.brand",
+      "surface": "User",
+      "description": "Filter by car brand theme",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "meetup.filters.date_today",
+      "surface": "User",
+      "description": "Show only today's meetups",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "meetup.filters.date_weekend",
+      "surface": "User",
+      "description": "Show only weekend meetups",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "meetup.filters.capacity_remaining",
+      "surface": "User",
+      "description": "Show only with available spots",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "meetup.filters.free_only",
+      "surface": "User",
+      "description": "Show only free meetups",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "meetup.filters.host_verified",
+      "surface": "User",
+      "description": "Show only verified hosts",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "meetup.filters.radius_km",
+      "surface": "User",
+      "description": "Radius filter in kilometers",
+      "ui_element": "slider",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.sort.soonest",
+      "surface": "User",
+      "description": "Sort by starting soon",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "meetup.sort.distance",
+      "surface": "User",
+      "description": "Sort by distance from user",
+      "ui_element": "select_option",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.sort.popular",
+      "surface": "User",
+      "description": "Sort by RSVP count",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "meetup.map.toggle",
+      "surface": "User",
+      "description": "Toggle map view",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.map.recenter",
+      "surface": "User",
+      "description": "Recenter map to user location",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.map.apply_bounds",
+      "surface": "User",
+      "description": "Apply map bounds as filter",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.card.save",
+      "surface": "User",
+      "description": "Save/favorite meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.card.share",
+      "surface": "User",
+      "description": "Share meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.card.view_details",
+      "surface": "User",
+      "description": "View full meetup details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.detail.gallery",
+      "surface": "User",
+      "description": "Meetup image/video gallery",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "meetup.detail.schedule",
+      "surface": "User",
+      "description": "Meetup schedule/timeline",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "meetup.detail.location_map",
+      "surface": "User",
+      "description": "Meetup location on map",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.detail.host_profile",
+      "surface": "User",
+      "description": "Host profile card",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "meetup.detail.rules",
+      "surface": "User",
+      "description": "Meetup rules/guidelines",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "meetup.detail.report",
+      "surface": "User",
+      "description": "Report meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.rsvp.join",
+      "surface": "User",
+      "description": "RSVP to join meetup",
+      "ui_element": "button",
+      "requires_edge_function": "meetup-rsvp"
+    },
+    {
+      "option_id": "meetup.rsvp.leave",
+      "surface": "User",
+      "description": "Cancel RSVP",
+      "ui_element": "button",
+      "requires_edge_function": "meetup-rsvp"
+    },
+    {
+      "option_id": "meetup.waitlist.join",
+      "surface": "User",
+      "description": "Join waitlist when full",
+      "ui_element": "button",
+      "requires_edge_function": "meetup-rsvp"
+    },
+    {
+      "option_id": "meetup.chat.open",
+      "surface": "User",
+      "description": "Open meetup chat",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.checkin.qr",
+      "surface": "User",
+      "description": "Check-in with QR code",
+      "ui_element": "button",
+      "requires_edge_function": "meetup-checkin"
+    },
+    {
+      "option_id": "meetup.checkin.gps",
+      "surface": "User",
+      "description": "Check-in with GPS geofence",
+      "ui_element": "button",
+      "requires_edge_function": "meetup-checkin"
+    },
+    {
+      "option_id": "meetup.create.start",
+      "surface": "User",
+      "description": "Start creating meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.create.upload_media",
+      "surface": "User",
+      "description": "Upload meetup photos/videos",
+      "ui_element": "component",
+      "requires_storage": "events-media"
+    },
+    {
+      "option_id": "meetup.create.set_location",
+      "surface": "User",
+      "description": "Set meetup location on map",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "meetup.create.capacity",
+      "surface": "User",
+      "description": "Set max capacity",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "meetup.create.preview",
+      "surface": "User",
+      "description": "Preview before submit",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.create.submit",
+      "surface": "User",
+      "description": "Submit meetup for review",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "meetup.empty.no_results",
+      "surface": "User",
+      "description": "No meetups found empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "meetup.empty.clear_filters",
+      "surface": "User",
+      "description": "Clear all filters",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "profile.meetups.my_hosted",
+      "surface": "Profile",
+      "description": "Meetups I've hosted",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.meetups.my_rsvps",
+      "surface": "Profile",
+      "description": "Meetups I've joined",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.meetups.saved",
+      "surface": "Profile",
+      "description": "Saved/favorited meetups",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.meetups.badges",
+      "surface": "Profile",
+      "description": "Meetup participation badges",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.meetups.wallet",
+      "surface": "Profile",
+      "description": "Wallet credits from meetups",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.meetups.settings",
+      "surface": "Profile",
+      "description": "Meetup notification settings",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.meetup.queue.pending",
+      "surface": "Admin",
+      "description": "Pending meetups queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.meetup.queue.flagged",
+      "surface": "Admin",
+      "description": "Flagged meetups queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.meetup.approve",
+      "surface": "Admin",
+      "description": "Approve meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.reject",
+      "surface": "Admin",
+      "description": "Reject meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.feature",
+      "surface": "Admin",
+      "description": "Feature meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.unfeature",
+      "surface": "Admin",
+      "description": "Unfeature meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.suspend",
+      "surface": "Admin",
+      "description": "Suspend meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.restore",
+      "surface": "Admin",
+      "description": "Restore suspended meetup",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.bulk.select_all",
+      "surface": "Admin",
+      "description": "Bulk select all meetups",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "admin.meetup.bulk.approve",
+      "surface": "Admin",
+      "description": "Bulk approve selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.bulk.reject",
+      "surface": "Admin",
+      "description": "Bulk reject selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.bulk.export_csv",
+      "surface": "Admin",
+      "description": "Export to CSV",
+      "ui_element": "button",
+      "requires_edge_function": "meetup-export-csv"
+    },
+    {
+      "option_id": "admin.meetup.edit.event",
+      "surface": "Admin",
+      "description": "Edit meetup details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.meetup.edit.locations",
+      "surface": "Admin",
+      "description": "Edit meetup location",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.meetup.audit_log",
+      "surface": "Admin",
+      "description": "View meetup audit log",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.meetup.filters.status",
+      "surface": "Admin",
+      "description": "Filter by status",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.meetup.filters.date",
+      "surface": "Admin",
+      "description": "Filter by date range",
+      "ui_element": "date_picker"
+    },
+    {
+      "option_id": "admin.meetup.filters.city",
+      "surface": "Admin",
+      "description": "Filter by city",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.meetup.search.input",
+      "surface": "Admin",
+      "description": "Admin search input",
+      "ui_element": "input"
+    }
+  ],
+  "summary": {
+    "total_options": 65,
+    "by_surface": {
+      "User": 39,
+      "Profile": 6,
+      "Admin": 20
+    },
+    "requires_postgis": 7,
+    "requires_storage": 1,
+    "requires_edge_functions": 5
+  }
+}
+

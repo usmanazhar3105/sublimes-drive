@@ -1,0 +1,91 @@
+═══════════════════════════════════════════════════════════
+  ⚡ FIX MARKETPLACE "FAILED TO FETCH" ERROR
+═══════════════════════════════════════════════════════════
+
+ERROR YOU'RE SEEING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Error fetching marketplace listings: TypeError: Failed to fetch
+
+
+THE FIX (2 SQL FILES):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────┐
+│ STEP 1: CREATE TABLE & SEED DATA                       │
+└─────────────────────────────────────────────────────────┘
+
+1. Go to: Supabase Dashboard
+2. Click: SQL Editor
+3. Copy/Paste: MARKETPLACE_FIX_FRESH_START.sql
+4. Click: Run
+
+✅ Should see:
+   "MARKETPLACE FIX COMPLETE! Total Listings: 8"
+
+
+┌─────────────────────────────────────────────────────────┐
+│ STEP 2: FIX RLS PERMISSIONS                            │
+└─────────────────────────────────────────────────────────┘
+
+1. Go to: Supabase Dashboard
+2. Click: SQL Editor (same place)
+3. Copy/Paste: FIX_MARKETPLACE_RLS_NOW.sql
+4. Click: Run
+
+✅ Should see:
+   "SUCCESS! Public users can now view 7 active listings"
+
+
+┌─────────────────────────────────────────────────────────┐
+│ STEP 3: REFRESH YOUR APP                               │
+└─────────────────────────────────────────────────────────┘
+
+1. Browser: Press Ctrl+Shift+R (or Cmd+Shift+R on Mac)
+2. Go to: Marketplace page
+3. Should see: 8 Chinese car listings! 🎉
+
+
+WHAT WAS THE PROBLEM?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ Row Level Security (RLS) was blocking unauthenticated users
+✅ Fixed: Now public users can view active listings
+
+
+FRONTEND ALREADY FIXED:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ App.tsx → Uses MarketplacePage_FIXED
+✅ Uses useMarketplaceListings hook
+✅ Shows error messages with retry
+✅ All Chinese car brands included
+
+
+QUICK TEST AFTER FIX:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Marketplace page loads → ✅
+2. See "8 listings available" → ✅
+3. Filter by "BYD" → ✅
+4. Search "seal" → ✅
+5. No console errors → ✅
+
+
+FILES TO RUN (IN ORDER):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  /MARKETPLACE_FIX_FRESH_START.sql
+2️⃣  /FIX_MARKETPLACE_RLS_NOW.sql
+
+
+NEED MORE HELP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📖 Full Guide: /MARKETPLACE_ERROR_FIXED_SUMMARY.md
+🔧 Troubleshooting: /MARKETPLACE_FETCH_ERROR_FIX.md
+⚡ Quick Start: /RUN_THIS_TO_FIX_MARKETPLACE.md
+
+
+═══════════════════════════════════════════════════════════
+  That's it! Just run 2 SQL files and you're done! 🚀
+═══════════════════════════════════════════════════════════

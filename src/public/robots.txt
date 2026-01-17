@@ -1,0 +1,15 @@
+# Robots.txt for Sublimes Drive
+# Allow all search engines
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /payments/
+Disallow: /wallet/
+
+# Sitemap
+Sitemap: https://sublimesdrive.com/sitemap.xml
+
+# Crawl delay
+Crawl-delay: 1

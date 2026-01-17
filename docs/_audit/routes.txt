@@ -1,0 +1,30 @@
+# Edge/API routes (raw matches)
+src/utils/supabase/client.ts:94:    return publicApiCall('/auth/signup', {
+src/utils/supabase/client.ts:101:    return publicApiCall('/auth/signin', {
+src/utils/supabase/client.ts:123:  healthCheck: () => publicApiCall('/health'),
+src/utils/supabase/client.ts:126:  getListings: () => publicApiCall('/listings'),
+src/utils/supabase/client.ts:133:  getGarages: () => publicApiCall('/garages'),
+src/utils/supabase/client.ts:136:  getCommunities: () => publicApiCall('/communities'),
+src/utils/supabase/client.ts:139:  getEvents: () => publicApiCall('/events'),
+src/utils/supabase/client.ts:142:  getOffers: () => publicApiCall('/offers'),
+src/utils/supabase/client.ts:145:  getRepairBids: () => publicApiCall('/repair-bids'),
+src/utils/supabase/client.ts:191:    return publicApiCall(`/search?${params.toString()}`)
+src/utils/supabase/client.ts:195:  initSampleData: () => publicApiCall('/init-sample-data', { method: 'POST' }),
+src/components/payments/StripePaymentPage_Wired.tsx:80:      const { sessionId } = await publicApiCall('/stripe/create-checkout', {
+src/components/OfferPaymentModal.tsx:66:      const { sessionId } = await publicApiCall('/stripe/create-offer-checkout', {
+src/src/hooks/usePayments.ts:42:      const data = await publicApiCall('/payments/create-intent', {
+src/src/hooks/usePayments.ts:96:      const data = await publicApiCall('/payments/create-intent', {
+src/src/hooks/usePosts.ts:72:      const response = await publicApiCall('/posts', {
+src/src/hooks/usePosts.ts:90:      await publicApiCall(`/posts/${postId}`, { method: 'DELETE' });
+src/src/hooks/usePosts.ts:104:      await publicApiCall(`/posts/${postId}/view`, { method: 'POST' });
+
+# API_BASE_URL usage (raw matches)
+src/utils/supabase/client.ts:30:export const API_BASE_URL = `${SUPABASE_URL}/functions/v1/make-server-97527403`
+src/utils/supabase/client.ts:34:  const url = `${API_BASE_URL}${endpoint}`
+src/utils/supabase/client.ts:71:  const url = `${API_BASE_URL}${endpoint}`
+src/components/CreatePostModal_Full.tsx:21:import { supabase, API_BASE_URL } from '../utils/supabase/client';
+src/components/CreatePostModal_Full.tsx:88:      fetch(`${API_BASE_URL}/health`).catch(() => {});
+src/components/CreatePostModal_Full.tsx:346:      const response = await fetch(`${API_BASE_URL}/posts`, {
+src/components/DiagnosticStartup.tsx:11:import { supabase, API_BASE_URL } from '../utils/supabase/client';
+src/components/DiagnosticStartup.tsx:62:      const response = await fetch(`${API_BASE_URL}/health`, {
+src/src/hooks/usePosts.ts:2:import { publicApiCall, API_BASE_URL as API_BASE } from '../../utils/supabase/client';

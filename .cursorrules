@@ -1,0 +1,48 @@
+# Sublimes Drive - Cursor IDE Rules
+
+## Critical Project Rules
+
+### 1. RLS Policies
+**NEVER** check admin roles in RLS policies. This causes infinite recursion.
+
+❌ WRONG:
+```sql
+create policy "admin_all" on public.posts
+for all using (exists(select 1 from profiles where id = auth.uid() and role = 'admin'));
+```
+
+✅ CORRECT (check in application layer):
+```typescript
+const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+if (profile?.role === 'admin') { /* admin actions */ }
+```
+
+### 2. Fee Calculation
+Always use `fn_calculate_fee` RPC function:
+- Car: AED 50 + 5% VAT
+- Parts: 8% of amount + 5% VAT  
+- Garage: AED 100 + 5% VAT
+
+### 3. Messaging Unlock
+Messages only allowed after bid status = 'accepted' or 'closed'
+Enforced by RLS policy.
+
+### 4. Role Restrictions
+- Garage owners can VIEW but NOT create bid repairs
+- Garage owners CANNOT access Instant Meetup
+- Enforce in UI layer
+
+### 5. Real Data Only
+- NO fake/mock data in production
+- All counters from real tables or aggregates
+- Use view tracking with 10min deduplication
+
+### 6. Storage Buckets
+Always use environment variables from STORAGE_BUCKETS constant
+Located in: src/lib/storageBuckets.ts
+
+### 7. Database Migrations
+- Only ADDITIVE migrations
+- Never drop/rename columns
+- Use IF NOT EXISTS for all creates
+- Test in staging first

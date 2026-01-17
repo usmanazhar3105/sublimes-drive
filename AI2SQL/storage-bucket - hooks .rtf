@@ -1,0 +1,263 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2639
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Roman;\f1\froman\fcharset0 Times-Bold;\f2\fnil\fcharset0 AppleColorEmoji;
+\f3\fmodern\fcharset0 Courier;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\fs24 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Here's a full set of 
+\f1\b upload hooks per bucket
+\f0\b0 , designed for your 
+\f1\b Supabase + React project
+\f0\b0 . These are reusable, optimized with strong typing, and follow your project\'92s schema + RLS policies.\
+\pard\pardeftab720\partightenfactor0
+\cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u9989 
+\f1\b  Shared Setup (Supabase Client)\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b0\fs24 \cf0 Make sure your 
+\f3\fs26 supabase.ts
+\f0\fs24  file exports the initialized client:\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs26 \cf0 // lib/supabase.ts\
+import \{ createClient \} from '@supabase/supabase-js'\
+\
+export const supabase = createClient(\
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,\
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\
+)\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55357 \u56550 
+\f1\b  Base Hook Template (used internally)\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useStorageUploader.ts\
+import \{ supabase \} from "@/lib/supabase"\
+\
+export async function uploadToBucket(\{\
+  file,\
+  bucket,\
+  userId,\
+  tag\
+\}: \{\
+  file: File\
+  bucket: string\
+  userId: string\
+  tag?: string\
+\}): Promise<string> \{\
+  const path = `$\{userId\}/$\{tag || 'upload'\}_$\{Date.now()\}_$\{file.name\}`\
+  const \{ error \} = await supabase.storage\
+    .from(bucket)\
+    .upload(path, file, \{\
+      cacheControl: "3600",\
+      metadata: \{ status: "pending" \},\
+      upsert: false\
+    \})\
+\
+  if (error) throw error\
+\
+  const \{ data \} = supabase.storage.from(bucket).getPublicUrl(path)\
+  return data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55358 \u56995 
+\f1\b  1. Community Post Media\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadCommunityMedia.ts\
+import \{ uploadToBucket \} from "./useStorageUploader"\
+\
+export function useUploadCommunityMedia() \{\
+  return async (file: File, userId: string, postId?: string) => \{\
+    return await uploadToBucket(\{\
+      file,\
+      bucket: "community-media",\
+      userId,\
+      tag: postId\
+    \})\
+  \}\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55357 \u57037 \u65039 
+\f1\b  2. Marketplace Listing Images\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadMarketplaceMedia.ts\
+import \{ uploadToBucket \} from "./useStorageUploader"\
+\
+export function useUploadMarketplaceMedia() \{\
+  return async (file: File, userId: string, listingId?: string) => \{\
+    return await uploadToBucket(\{\
+      file,\
+      bucket: "marketplace-media",\
+      userId,\
+      tag: listingId\
+    \})\
+  \}\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55357 \u56615 
+\f1\b  3. Bid Repair (Anonymous)\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadBidRepairMedia.ts\
+import \{ supabase \} from "@/lib/supabase"\
+\
+export async function uploadBidRepairMedia(file: File, bidId?: string): Promise<string> \{\
+  const path = `anon/$\{bidId || 'draft'\}_$\{Date.now()\}_$\{file.name\}`\
+  const \{ error \} = await supabase.storage\
+    .from("bidrepair-media")\
+    .upload(path, file, \{\
+      metadata: \{ status: "pending" \},\
+      upsert: false\
+    \})\
+\
+  if (error) throw error\
+  const \{ data \} = supabase.storage.from("bidrepair-media").getPublicUrl(path)\
+  return data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55357 \u56420 
+\f1\b  4. Profile Avatar Upload\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadProfileImage.ts\
+import \{ uploadToBucket \} from "./useStorageUploader"\
+\
+export function useUploadProfileImage() \{\
+  return async (file: File, userId: string) => \{\
+    return await uploadToBucket(\{\
+      file,\
+      bucket: "profile-images",\
+      userId,\
+      tag: "avatar"\
+    \})\
+  \}\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55358 \u56816 
+\f1\b  5. Garage Media Upload\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadGarageMedia.ts\
+import \{ uploadToBucket \} from "./useStorageUploader"\
+\
+export function useUploadGarageMedia() \{\
+  return async (file: File, userId: string, garageId: string) => \{\
+    return await uploadToBucket(\{\
+      file,\
+      bucket: "garagehub-media",\
+      userId,\
+      tag: garageId\
+    \})\
+  \}\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55357 \u56568 
+\f1\b  6. Event Photos Upload\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadEventMedia.ts\
+import \{ uploadToBucket \} from "./useStorageUploader"\
+\
+export function useUploadEventMedia() \{\
+  return async (file: File, userId: string, eventId: string) => \{\
+    return await uploadToBucket(\{\
+      file,\
+      bucket: "events-media",\
+      userId,\
+      tag: eventId\
+    \})\
+  \}\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u55358 \u56817 
+\f1\b  7. Brand/Import/System Assets (Admin)\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 // lib/hooks/useUploadBrandAsset.ts\
+import \{ uploadToBucket \} from "./useStorageUploader"\
+\
+export function useUploadBrandAsset() \{\
+  return async (file: File, userId: string, type: 'logo' | 'banner' | 'preset') => \{\
+    return await uploadToBucket(\{\
+      file,\
+      bucket: "system-settings",\
+      userId,\
+      tag: type\
+    \})\
+  \}\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f2\fs36 \cf0 \uc0\u9989 
+\f1\b  Usage in a Component\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b0\fs26 \cf0 import \{ useUploadCommunityMedia \} from "@/lib/hooks/useUploadCommunityMedia"\
+\
+export default function UploadBox(\{ userId, postId \}: \{ userId: string; postId?: string \}) \{\
+  const upload = useUploadCommunityMedia()\
+\
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) \{\
+    const file = e.target.files?.[0]\
+    if (!file) return\
+\
+    const url = await upload(file, userId, postId)\
+    console.log("Uploaded to:", url)\
+  \}\
+\
+  return <input type="file" onChange=\{handleUpload\} />\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Would you like me to export all hooks as 
+\f3\fs26 .ts
+\f0\fs24  files in a new 
+\f3\fs26 /hooks/
+\f0\fs24  folder inside your bundle?\
+}

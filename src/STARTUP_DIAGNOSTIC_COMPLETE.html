@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sublimes Drive - Complete Startup Diagnostic</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0B1426;
+      color: #E8EAED;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #D4AF37;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      color: #E8EAED;
+      margin: 30px 0 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #1E293B;
+    }
+
+    .test-card {
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .test-card h3 {
+      color: #D4AF37;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status.success {
+      background: #10B981;
+      color: white;
+    }
+
+    .status.error {
+      background: #EF4444;
+      color: white;
+    }
+
+    .status.warning {
+      background: #F59E0B;
+      color: white;
+    }
+
+    .status.pending {
+      background: #6B7280;
+      color: white;
+    }
+
+    pre {
+      background: #0B1426;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 15px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin: 10px 0;
+    }
+
+    .details {
+      background: #0B1426;
+      border-left: 3px solid #D4AF37;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .error-details {
+      background: #7F1D1D;
+      border-left: 3px solid #EF4444;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    button {
+      background: #D4AF37;
+      color: #0B1426;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px 10px 10px 0;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #C19B2E;
+    }
+
+    button:disabled {
+      background: #64748B;
+      cursor: not-allowed;
+    }
+
+    .loader {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #D4AF37;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .metric {
+      background: #1E293B;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+    }
+
+    .metric-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #D4AF37;
+      margin: 10px 0;
+    }
+
+    .metric-label {
+      font-size: 14px;
+      color: #94A3B8;
+    }
+
+    .code-block {
+      background: #0B1426;
+      border: 1px solid #334155;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .copy-btn {
+      background: #334155;
+      color: #E8EAED;
+      padding: 6px 12px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+
+    .action-buttons {
+      margin: 20px 0;
+      padding: 20px;
+      background: #1E293B;
+      border-radius: 8px;
+      border: 2px solid #D4AF37;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Sublimes Drive - Complete Startup Diagnostic</h1>
+    <p style="color: #94A3B8; margin-bottom: 30px;">Comprehensive health check for all app components</p>
+
+    <div class="action-buttons">
+      <h3 style="color: #D4AF37; margin-bottom: 15px;">Quick Actions</h3>
+      <button onclick="runAllTests()">▶️ Run All Tests</button>
+      <button onclick="runSupabaseTests()">🗄️ Test Database Only</button>
+      <button onclick="runNetworkTests()">🌐 Test Network Only</button>
+      <button onclick="location.reload()">🔄 Refresh Page</button>
+    </div>
+
+    <div class="grid">
+      <div class="metric">
+        <div class="metric-label">Tests Passed</div>
+        <div class="metric-value" id="passedCount">0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Tests Failed</div>
+        <div class="metric-value" id="failedCount" style="color: #EF4444;">0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Warnings</div>
+        <div class="metric-value" id="warningCount" style="color: #F59E0B;">0</div>
+      </div>
+    </div>
+
+    <!-- Test Results -->
+    <div id="testResults"></div>
+
+    <!-- Summary -->
+    <div id="summary" style="margin-top: 40px;"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    // Do not hardcode credentials in the repo. Replace these when running locally.
+    const projectId = 'YOUR_PROJECT_ID';
+    const publicAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+
+    let supabase;
+    let testResults = [];
+    let passedCount = 0;
+    let failedCount = 0;
+    let warningCount = 0;
+
+    // Initialize Supabase
+    try {
+      supabase = createClient(
+        `https://${projectId}.supabase.co`,
+        publicAnonKey,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+          }
+        }
+      );
+      console.log('✅ Supabase client created');
+    } catch (error) {
+      console.error('❌ Failed to create Supabase client:', error);
+    }
+
+    function addTest(title, status, details, error = null) {
+      testResults.push({ title, status, details, error });
+      
+      if (status === 'success') passedCount++;
+      else if (status === 'error') failedCount++;
+      else if (status === 'warning') warningCount++;
+
+      updateMetrics();
+      renderResults();
+    }
+
+    function updateMetrics() {
+      document.getElementById('passedCount').textContent = passedCount;
+      document.getElementById('failedCount').textContent = failedCount;
+      document.getElementById('warningCount').textContent = warningCount;
+    }
+
+    function renderResults() {
+      const container = document.getElementById('testResults');
+      container.innerHTML = testResults.map((test, idx) => `
+        <div class="test-card">
+          <h3>
+            <span>${test.status === 'success' ? '✅' : test.status === 'error' ? '❌' : test.status === 'warning' ? '⚠️' : '⏳'}</span>
+            ${test.title}
+            <span class="status ${test.status}">${test.status.toUpperCase()}</span>
+          </h3>
+          <div class="details">${test.details}</div>
+          ${test.error ? `<div class="error-details"><strong>Error:</strong><br><pre>${JSON.stringify(test.error, null, 2)}</pre></div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function runAllTests() {
+      testResults = [];
+      passedCount = 0;
+      failedCount = 0;
+      warningCount = 0;
+      updateMetrics();
+
+      document.getElementById('testResults').innerHTML = '<div class="test-card"><h3><div class="loader"></div> Running comprehensive tests...</h3></div>';
+
+      // 1. Browser Environment Tests
+      await testBrowserEnvironment();
+      
+      // 2. Network Tests
+      await testNetworkConnectivity();
+      
+      // 3. Supabase Tests
+      await runSupabaseTests();
+      
+      // 4. Critical Tables Test
+      await testCriticalTables();
+      
+      // 5. RLS Policies Test
+      await testRLSPolicies();
+
+      // Generate summary
+      generateSummary();
+    }
+
+    async function testBrowserEnvironment() {
+      addTest(
+        'Browser Environment',
+        'success',
+        `Browser: ${navigator.userAgent}<br>
+         Screen: ${window.screen.width}x${window.screen.height}<br>
+         Viewport: ${window.innerWidth}x${window.innerHeight}<br>
+         localStorage: ${typeof localStorage !== 'undefined' ? 'Available' : 'Not available'}<br>
+         WebSocket: ${typeof WebSocket !== 'undefined' ? 'Available' : 'Not available'}`
+      );
+    }
+
+    async function testNetworkConnectivity() {
+      try {
+        const start = Date.now();
+        const response = await fetch(`https://${projectId}.supabase.co/rest/v1/`, {
+          method: 'GET',
+          headers: {
+            'apikey': publicAnonKey
+          }
+        });
+        const latency = Date.now() - start;
+        
+        addTest(
+          'Supabase Network Connectivity',
+          response.ok ? 'success' : 'error',
+          `Status: ${response.status} ${response.statusText}<br>
+           Latency: ${latency}ms<br>
+           ${latency > 1000 ? '⚠️ High latency detected' : '✅ Low latency'}`
+        );
+      } catch (error) {
+        addTest(
+          'Supabase Network Connectivity',
+          'error',
+          'Cannot reach Supabase server. Check your internet connection.',
+          error
+        );
+      }
+    }
+
+    async function runSupabaseTests() {
+      // Test 1: Supabase Client Creation
+      if (supabase) {
+        addTest(
+          'Supabase Client Initialization',
+          'success',
+          'Supabase client created successfully'
+        );
+      } else {
+        addTest(
+          'Supabase Client Initialization',
+          'error',
+          'Failed to create Supabase client'
+        );
+        return;
+      }
+
+      // Test 2: Auth Session
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        addTest(
+          'Authentication System',
+          session ? 'success' : 'warning',
+          session 
+            ? `User authenticated: ${session.user.email}<br>Session expires: ${new Date(session.expires_at * 1000).toLocaleString()}`
+            : 'No active session (user not logged in)'
+        );
+      } catch (error) {
+        addTest(
+          'Authentication System',
+          'error',
+          'Failed to check authentication status',
+          error
+        );
+      }
+
+      // Test 3: Database Connection
+      try {
+        const { data, error } = await supabase.from('profiles').select('count').limit(1);
+        if (error) throw error;
+        
+        addTest(
+          'Database Connection',
+          'success',
+          'Successfully connected to Supabase database'
+        );
+      } catch (error) {
+        addTest(
+          'Database Connection',
+          'error',
+          'Cannot query database. This is likely a table or RLS issue.',
+          error
+        );
+      }
+    }
+
+    async function testCriticalTables() {
+      const tables = [
+        'profiles',
+        'marketplace_listings',
+        'user_favorites',
+        'communities',
+        'posts',
+        'events',
+        'garages',
+        'promotional_offers'
+      ];
+
+      for (const table of tables) {
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select('id')
+            .limit(1);
+          
+          if (error) {
+            if (error.code === '42501') {
+              addTest(
+                `Table: ${table}`,
+                'warning',
+                'Table exists but RLS policies may be restricting access',
+                error
+              );
+            } else if (error.code === '42P01') {
+              addTest(
+                `Table: ${table}`,
+                'error',
+                'Table does not exist in database',
+                error
+              );
+            } else {
+              addTest(
+                `Table: ${table}`,
+                'error',
+                'Unknown error accessing table',
+                error
+              );
+            }
+          } else {
+            addTest(
+              `Table: ${table}`,
+              'success',
+              `Table accessible (${data ? data.length : 0} records queried)`
+            );
+          }
+        } catch (error) {
+          addTest(
+            `Table: ${table}`,
+            'error',
+            'Failed to query table',
+            error
+          );
+        }
+      }
+    }
+
+    async function testRLSPolicies() {
+      // Test public read access
+      try {
+        const { data, error } = await supabase
+          .from('marketplace_listings')
+          .select('id, status')
+          .eq('status', 'active')
+          .limit(5);
+        
+        if (error) throw error;
+        
+        addTest(
+          'RLS: Public Read Access (marketplace_listings)',
+          'success',
+          `Can read ${data.length} active listings`
+        );
+      } catch (error) {
+        addTest(
+          'RLS: Public Read Access (marketplace_listings)',
+          'error',
+          'Cannot read active marketplace listings. RLS policies may be misconfigured.',
+          error
+        );
+      }
+
+      // Test authenticated write (if logged in)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Try to read user's own favorites
+          const { data, error } = await supabase
+            .from('user_favorites')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .limit(5);
+          
+          if (error) throw error;
+          
+          addTest(
+            'RLS: User Can Read Own Data (user_favorites)',
+            'success',
+            `User can read their own favorites (${data.length} found)`
+          );
+        } else {
+          addTest(
+            'RLS: User Can Read Own Data',
+            'warning',
+            'Skipped (user not authenticated)'
+          );
+        }
+      } catch (error) {
+        addTest(
+          'RLS: User Can Read Own Data',
+          'error',
+          'User cannot read their own data. RLS policies may be too restrictive.',
+          error
+        );
+      }
+    }
+
+    function generateSummary() {
+      const totalTests = testResults.length;
+      const healthScore = Math.round((passedCount / totalTests) * 100);
+      
+      let status = 'healthy';
+      let statusColor = '#10B981';
+      let recommendation = '';
+
+      if (healthScore >= 90) {
+        status = '✅ Excellent Health';
+        recommendation = 'Your app is properly configured and all systems are operational!';
+      } else if (healthScore >= 70) {
+        status = '⚠️ Minor Issues';
+        statusColor = '#F59E0B';
+        recommendation = 'Most systems are working, but there are some warnings to address.';
+      } else if (healthScore >= 50) {
+        status = '⚠️ Significant Issues';
+        statusColor = '#F59E0B';
+        recommendation = 'Several components need attention. Review failed tests above.';
+      } else {
+        status = '❌ Critical Issues';
+        statusColor = '#EF4444';
+        recommendation = 'Multiple critical failures detected. Database or network issues likely.';
+      }
+
+      document.getElementById('summary').innerHTML = `
+        <div class="test-card" style="border: 2px solid ${statusColor};">
+          <h2 style="color: ${statusColor};">${status}</h2>
+          <div style="font-size: 48px; font-weight: 700; color: ${statusColor}; margin: 20px 0;">
+            ${healthScore}%
+          </div>
+          <p style="margin-bottom: 20px;">${recommendation}</p>
+          <div class="details">
+            <strong>Test Summary:</strong><br>
+            Total Tests: ${totalTests}<br>
+            Passed: ${passedCount}<br>
+            Failed: ${failedCount}<br>
+            Warnings: ${warningCount}
+          </div>
+          ${failedCount > 0 ? `
+            <div class="error-details">
+              <strong>🔧 Recommended Actions:</strong><br>
+              1. Check failed tests above for specific errors<br>
+              2. Verify Supabase database tables exist<br>
+              3. Run SQL migrations if tables are missing<br>
+              4. Check RLS policies if access is denied<br>
+              5. Verify network connectivity to Supabase
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    async function testNetworkTests() {
+      testResults = [];
+      passedCount = 0;
+      failedCount = 0;
+      warningCount = 0;
+      updateMetrics();
+
+      await testNetworkConnectivity();
+      generateSummary();
+    }
+
+    // Make functions globally available
+    window.runAllTests = runAllTests;
+    window.runSupabaseTests = runSupabaseTests;
+    window.runNetworkTests = testNetworkTests;
+
+    // Auto-run on load
+    console.log('🔍 Diagnostic page loaded - click "Run All Tests" to begin');
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<idea-plugin version="2">
+    <id>org.yseasony.sqlgenerator</id>
+    <name>Sql Generator</name>
+    <version>2.1.1</version>
+    <vendor email="yseasony@gmail.com" url="https://github.com/yseasony">yseasony</vendor>
+
+    <description>
+        <![CDATA[
+            <h1>idea Sql Generator plugin</h1><br/>
+            <ul>
+                <li>Easy Sql Generator</li>
+                <li>How to use, github: <a href="https://github.com/yseasony/idea-sql-generator-tool">https://github.com/yseasony/idea-sql-generator-tool</a></li>
+                <li>issues: <a href="https://github.com/yseasony/idea-sql-generator-tool/issues">issues</a></li>
+                <li>donate: <a href="https://www.paypal.me/yseasony">paypal</a></li>
+            </ul>
+            <br/>
+        ]]>
+    </description>
+
+    <change-notes>
+        <![CDATA[
+            <h1>idea Sql Generator plugin</h1><br/>
+            <ul>
+                 <li>
+                    Sql Generator v2.2.1<br/>
+                    Support INSERT INTO ... ON DUPLICATE KEY
+                 </li>
+                 <li>
+                    Sql Generator v2.2.0<br/>
+                    Support Auto SQL formatter
+                </li>
+                <li>
+                    Sql Generator v2.1.2<br/>
+                    Support DataGrip version number
+                </li>
+                <li>
+                    Sql Generator v2.0.1<br/>
+                    fix "com.intellij.database" not installed, support DataGrip
+                </li>
+                <li>
+                    Sql Generator v2.0<br/>
+                    Support after idea 15.
+                </li>
+                <li>
+                    Sql Generator v1.2<br/>
+                    Support Community Edition.
+                </li>
+                <li>
+                    Sql Generator v1.1<br/>
+                    Support PhpStorm,PyCharm.<br/>
+                    Thank for juntalis fix issue.
+                </li>
+                <li>Sql Generator v1.0<br/>
+                </li>
+            </ul>
+        ]]>
+    </change-notes>
+
+    <!-- please see http://confluence.jetbrains.com/display/IDEADEV/Build+Number+Ranges for description -->
+    <idea-version since-build="143"/>
+
+    <!-- please see http://confluence.jetbrains.com/display/IDEADEV/Plugin+Compatibility+with+IntelliJ+Platform+Products
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+    </extensions>
+
+    <application-components>
+        <component>
+            <implementation-class>org.yseasony.sqlgenerator.component.SqlComponent</implementation-class>
+        </component>
+    </application-components>
+
+    <project-components>
+        <!--<component>-->
+            <!--<implementation-class>org.yseasony.sqlgenerator.configurable.SqlGeneratorConfigComponent</implementation-class>-->
+        <!--</component>-->
+    </project-components>
+
+    <depends optional="true">com.intellij.database</depends>
+    <depends optional="true">com.intellij.modules.ultimate</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectConfigurable groupId="root" displayName="SqlGenerator" id="sqlGeneratorConfig"
+                             instance="org.yseasony.sqlgenerator.configurable.SqlGeneratorConfigPage"/>
+        <projectService serviceImplementation="org.yseasony.sqlgenerator.configurable.SqlGeneratorConfigComponent"/>
+    </extensions>
+
+    <actions>
+        <action id="sqlGenerate" class="org.yseasony.sqlgenerator.action.SqlGeneratorAction">
+            <add-to-group group-id="DatabaseViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+
+</idea-plugin>

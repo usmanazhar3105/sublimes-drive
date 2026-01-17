@@ -1,0 +1,236 @@
+{
+  "meta": {
+    "generated": "2025-10-16T00:00:00Z",
+    "source": "Web React App.tsx",
+    "target": "React Native /apps/native/test01/",
+    "verification_status": "INCOMPLETE - CRITICAL GAPS IDENTIFIED"
+  },
+  "summary": {
+    "total_web_routes": 47,
+    "total_rn_screens_created": 15,
+    "coverage_percentage": 31.9,
+    "parity_status": "FAILED - Below 95% threshold",
+    "missing_screens": 32,
+    "missing_percentage": 68.1
+  },
+  "web_routes_inventory": {
+    "auth": {
+      "total": 9,
+      "routes": [
+        "welcome",
+        "login",
+        "signup",
+        "forgot-password",
+        "verify-email",
+        "role-selection",
+        "verify-car-owner",
+        "verify-garage-owner",
+        "onboarding"
+      ]
+    },
+    "main_app": {
+      "total": 11,
+      "routes": [
+        "home",
+        "communities",
+        "marketplace",
+        "garage-hub",
+        "offers",
+        "events",
+        "profile",
+        "leaderboard",
+        "meetup",
+        "search",
+        "system-test"
+      ]
+    },
+    "profile_sub": {
+      "total": 6,
+      "routes": [
+        "profile-settings",
+        "saved",
+        "my-orders",
+        "my-packages",
+        "my-boosts",
+        "my-listings"
+      ]
+    },
+    "messaging": {
+      "total": 3,
+      "routes": [
+        "notifications",
+        "conversations",
+        "chat"
+      ]
+    },
+    "listings": {
+      "total": 4,
+      "routes": [
+        "create-car-listing",
+        "place-ad",
+        "import-car",
+        "listing-payment"
+      ]
+    },
+    "legal": {
+      "total": 6,
+      "routes": [
+        "legal-hub",
+        "terms-of-service",
+        "privacy-policy",
+        "refund-policy",
+        "about-us",
+        "faq-knowledge-base"
+      ]
+    },
+    "payments": {
+      "total": 3,
+      "routes": [
+        "listing-payment",
+        "stripe-payment",
+        "payment-success"
+      ]
+    },
+    "chat": {
+      "total": 1,
+      "routes": [
+        "ai-chat-assistant"
+      ]
+    },
+    "repair": {
+      "total": 1,
+      "routes": [
+        "repair-bid"
+      ]
+    },
+    "admin": {
+      "total": 1,
+      "routes": [
+        "admin"
+      ],
+      "note": "Admin has 40+ sub-pages not counted in this mobile conversion"
+    }
+  },
+  "rn_screens_created": {
+    "auth": {
+      "created": 4,
+      "missing": 5,
+      "files": [
+        "app/(auth)/welcome.tsx",
+        "app/(auth)/login.tsx",
+        "app/(auth)/signup.tsx",
+        "app/(auth)/forgot-password.tsx"
+      ],
+      "missing_files": [
+        "app/(auth)/verify-email.tsx",
+        "app/(auth)/role-selection.tsx",
+        "app/(auth)/verify-car-owner.tsx",
+        "app/(auth)/verify-garage-owner.tsx",
+        "app/(auth)/onboarding.tsx"
+      ]
+    },
+    "tabs": {
+      "created": 7,
+      "missing": 0,
+      "files": [
+        "app/(tabs)/index.tsx",
+        "app/(tabs)/communities.tsx",
+        "app/(tabs)/marketplace.tsx",
+        "app/(tabs)/garage.tsx",
+        "app/(tabs)/offers.tsx",
+        "app/(tabs)/events.tsx",
+        "app/(tabs)/profile.tsx"
+      ],
+      "note": "All main tabs created"
+    },
+    "stack_screens": {
+      "created": 4,
+      "missing": 27,
+      "files": [
+        "app/screens/marketplace/listing-detail.tsx",
+        "app/screens/listings/create-listing.tsx",
+        "app/screens/search/index.tsx",
+        "app/screens/notifications/index.tsx"
+      ],
+      "missing_files": [
+        "app/screens/profile/settings.tsx",
+        "app/screens/profile/saved.tsx",
+        "app/screens/profile/my-listings.tsx",
+        "app/screens/profile/my-orders.tsx",
+        "app/screens/profile/my-packages.tsx",
+        "app/screens/profile/my-boosts.tsx",
+        "app/screens/profile/wallet.tsx",
+        "app/screens/profile/edit-profile.tsx",
+        "app/screens/messaging/conversations.tsx",
+        "app/screens/messaging/chat.tsx",
+        "app/screens/listings/place-ad.tsx",
+        "app/screens/listings/import-car.tsx",
+        "app/screens/garage/request-repair.tsx",
+        "app/screens/garage/repair-bids.tsx",
+        "app/screens/garage/garage-detail.tsx",
+        "app/screens/offers/offer-detail.tsx",
+        "app/screens/events/event-detail.tsx",
+        "app/screens/meetup/instant-meetup.tsx",
+        "app/screens/leaderboard/index.tsx",
+        "app/screens/legal/legal-hub.tsx",
+        "app/screens/legal/terms.tsx",
+        "app/screens/legal/privacy.tsx",
+        "app/screens/legal/refund.tsx",
+        "app/screens/legal/about.tsx",
+        "app/screens/legal/faq.tsx",
+        "app/screens/chat/ai-assistant.tsx",
+        "app/screens/payments/listing-payment.tsx",
+        "app/screens/payments/stripe-payment.tsx",
+        "app/screens/payments/payment-success.tsx"
+      ]
+    }
+  },
+  "gaps_analysis": {
+    "critical_missing": [
+      "All profile sub-pages (settings, saved, orders, packages, boosts, my-listings)",
+      "All messaging screens (conversations, chat)",
+      "All legal screens (legal-hub, terms, privacy, refund, about, faq)",
+      "All payment screens (listing-payment, stripe-payment, payment-success)",
+      "Garage detail screens (request-repair, repair-bids, garage-detail)",
+      "Additional listing screens (place-ad, import-car)",
+      "Event/offer detail screens",
+      "Instant meetup screen",
+      "Leaderboard screen",
+      "AI chat assistant screen",
+      "Remaining auth screens (verify-email, role-selection, verifications, onboarding)"
+    ],
+    "modals_sheets_drawers": {
+      "web_has": [
+        "CreatePostModal",
+        "ActionModal",
+        "MoreModal",
+        "CreateMeetupModal",
+        "GarageDetailModal",
+        "ListingDetailModal",
+        "MediaViewerModal",
+        "EditProfileModal",
+        "TopUpWalletModal"
+      ],
+      "rn_has": [],
+      "missing_count": 9,
+      "note": "No modals/sheets/drawers created in RN implementation"
+    },
+    "states_coverage": {
+      "loading": "NOT IMPLEMENTED",
+      "empty": "NOT IMPLEMENTED",
+      "error": "NOT IMPLEMENTED",
+      "skeleton": "NOT IMPLEMENTED"
+    }
+  },
+  "verdict": {
+    "acceptance_criteria_met": false,
+    "coverage_threshold": "31.9% (Required: ≥95%)",
+    "parity_threshold": "NOT MEASURED (screens incomplete)",
+    "navigation_complete": false,
+    "tokens_verified": true,
+    "assets_exported": false,
+    "states_implemented": false,
+    "a11y_verified": false,
+    "build_verified": false
+  }
+}

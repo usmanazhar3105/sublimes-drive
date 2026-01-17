@@ -1,0 +1,7 @@
+== Versions ==
+Wed Nov  5 08:10:54 +04 2025
+Darwin iMacs-iMac 21.6.0 Darwin Kernel Version 21.6.0: Mon Jun 24 00:56:10 PDT 2024; root:xnu-8020.240.18.709.2~1/RELEASE_X86_64 x86_64
+v22.20.0
+10.9.3
+Python 3.9.6
+2.54.11

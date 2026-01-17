@@ -1,0 +1,274 @@
+{
+  "meta": {
+    "source": "Web React (App.tsx case statements)",
+    "target": "React Native (Expo Router)",
+    "mapping_version": "1.0.0",
+    "date": "2025-10-16"
+  },
+  "route_mappings": [
+    {
+      "web_route": "welcome",
+      "rn_path": "app/(auth)/welcome.tsx",
+      "status": "CREATED",
+      "parity": "BASIC - needs states"
+    },
+    {
+      "web_route": "login",
+      "rn_path": "app/(auth)/login.tsx",
+      "status": "CREATED",
+      "parity": "BASIC - needs social login icons, states"
+    },
+    {
+      "web_route": "signup",
+      "rn_path": "app/(auth)/signup.tsx",
+      "status": "CREATED",
+      "parity": "BASIC - needs validation states"
+    },
+    {
+      "web_route": "forgot-password",
+      "rn_path": "app/(auth)/forgot-password.tsx",
+      "status": "CREATED",
+      "parity": "BASIC"
+    },
+    {
+      "web_route": "verify-email",
+      "rn_path": "app/(auth)/verify-email.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "role-selection",
+      "rn_path": "app/(auth)/role-selection.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "verify-car-owner",
+      "rn_path": "app/(auth)/verify-car-owner.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "verify-garage-owner",
+      "rn_path": "app/(auth)/verify-garage-owner.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "onboarding",
+      "rn_path": "app/(auth)/onboarding.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "home",
+      "rn_path": "app/(tabs)/index.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has stats, actions, trending, feed"
+    },
+    {
+      "web_route": "communities",
+      "rn_path": "app/(tabs)/communities.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has feed, tabs, post cards"
+    },
+    {
+      "web_route": "marketplace",
+      "rn_path": "app/(tabs)/marketplace.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has filters, grid, cards"
+    },
+    {
+      "web_route": "garage-hub",
+      "rn_path": "app/(tabs)/garage.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has categories, garage cards"
+    },
+    {
+      "web_route": "offers",
+      "rn_path": "app/(tabs)/offers.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has stats, offer cards, promo codes"
+    },
+    {
+      "web_route": "events",
+      "rn_path": "app/(tabs)/events.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has event cards, date boxes"
+    },
+    {
+      "web_route": "profile",
+      "rn_path": "app/(tabs)/profile.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has avatar, stats, menu items"
+    },
+    {
+      "web_route": "profile-settings",
+      "rn_path": "app/screens/profile/settings.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "saved",
+      "rn_path": "app/screens/profile/saved.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "my-orders",
+      "rn_path": "app/screens/profile/my-orders.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "my-packages",
+      "rn_path": "app/screens/profile/my-packages.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "my-boosts",
+      "rn_path": "app/screens/profile/my-boosts.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "my-listings",
+      "rn_path": "app/screens/profile/my-listings.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "notifications",
+      "rn_path": "app/screens/notifications/index.tsx",
+      "status": "CREATED",
+      "parity": "BASIC - needs more notification types"
+    },
+    {
+      "web_route": "conversations",
+      "rn_path": "app/screens/messaging/conversations.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "chat",
+      "rn_path": "app/screens/messaging/chat.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "ai-chat-assistant",
+      "rn_path": "app/screens/chat/ai-assistant.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "create-car-listing",
+      "rn_path": "app/screens/listings/create-listing.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has form, photo upload, boost option"
+    },
+    {
+      "web_route": "place-ad",
+      "rn_path": "app/screens/listings/place-ad.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "import-car",
+      "rn_path": "app/screens/listings/import-car.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "listing-payment",
+      "rn_path": "app/screens/payments/listing-payment.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "stripe-payment",
+      "rn_path": "app/screens/payments/stripe-payment.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "payment-success",
+      "rn_path": "app/screens/payments/payment-success.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "repair-bid",
+      "rn_path": "app/screens/garage/repair-bid.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "legal-hub",
+      "rn_path": "app/screens/legal/legal-hub.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "terms-of-service",
+      "rn_path": "app/screens/legal/terms.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "privacy-policy",
+      "rn_path": "app/screens/legal/privacy.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "refund-policy",
+      "rn_path": "app/screens/legal/refund.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "about-us",
+      "rn_path": "app/screens/legal/about.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "faq-knowledge-base",
+      "rn_path": "app/screens/legal/faq.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "leaderboard",
+      "rn_path": "app/screens/leaderboard/index.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "meetup",
+      "rn_path": "app/screens/meetup/instant-meetup.tsx",
+      "status": "MISSING",
+      "parity": "N/A"
+    },
+    {
+      "web_route": "search",
+      "rn_path": "app/screens/search/index.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has search bar, filters, recent/popular"
+    },
+    {
+      "web_route": "marketplace -> listing-detail (modal)",
+      "rn_path": "app/screens/marketplace/listing-detail.tsx",
+      "status": "CREATED",
+      "parity": "GOOD - has gallery, specs, seller info, CTA"
+    }
+  ],
+  "summary": {
+    "total_routes": 42,
+    "created": 15,
+    "missing": 27,
+    "coverage_percent": 35.7
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "apply_sql_directly": { "supported": false, "how": "", "limits": "Figma Make does not execute SQL against Supabase; it only generates SQL for manual apply." },
+  "run_supabase_cli": { "supported": false, "how": "", "required_permissions": "", "network_limits": "CLI invocation is not supported from Figma Make runtime." },
+  "generate_sql_only": { "supported": true, "where_output": "Generated within exported code or artifacts.", "file_layout": "migrations/NNN_*.sql split by concern." },
+  "create_tables": { "supported": true, "limits": "SQL generation only; manual apply required." },
+  "alter_tables": { "supported": true, "limits": "Idempotent ALTER statements recommended; manual apply required." },
+  "foreign_keys_indexes": { "supported": true, "limits": "SQL generation only; ensure table order and existence." },
+  "enums_views": { "supported": true, "limits": "Create types/views via SQL; idempotent guards required." },
+  "rls_policies": { "supported": "partial", "limits": "Figma Make can generate policy SQL, but cannot apply or diff live policies." },
+  "functions_triggers": { "supported": "partial", "limits": "Generation only; SECURITY DEFINER functions must be reviewed and applied manually." },
+  "edge_functions": { "supported": "partial", "limits": "Code generation possible; deploy via Supabase CLI/CD manually." },
+  "storage_buckets_policies": { "supported": "partial", "limits": "Can emit SQL using storage schema helpers; must run manually." },
+  "auth_schemas": { "supported": "partial", "limits": "Auth config is Supabase-managed; app code can target it but not reconfigure it from Figma Make." },
+  "seeding": { "supported": true, "limits": "Seed SQL as separate file with idempotent inserts." },
+  "env_management": { "supported": true, "supports_dev_stage_prod": true, "secrets_policy": "Service Role must never be in client. Use environment separation and secret storage." },
+  "dry_run_and_diff": { "supported": "partial", "how": "Emit validation.sql and checklists; external CI can compare expected vs live.", "format": "SQL + markdown checklist." },
+  "rollback_strategy": { "supported": true, "how": "Provide reversible patterns and a dedicated BREAKING file for opt-in changes.", "limits": "Manual execution." },
+  "rate_limits_quotas": { "notes": "Observe Supabase API limits; keep migrations transactional and ordered." },
+  "logs_and_diagnostics": { "notes": "Rely on Supabase SQL editor logs, CLI output, and validation queries." }
+}

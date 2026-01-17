@@ -1,0 +1,476 @@
+-- Migration: Complete RLS Policies
+-- Date: 2025-11-02
+-- Purpose: Set up all RLS policies correctly (avoiding infinite recursion)
+-- CRITICAL: Admin checks done in APPLICATION LAYER, not in RLS policies
+
+-- Enable RLS on existing tables only
+-- (Skip tables that don't exist yet - they'll be added in future migrations)
+ALTER TABLE IF EXISTS public.posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.post_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.post_saves ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.post_reports ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.post_views ENABLE ROW LEVEL SECURITY; -- Table doesn't exist yet
+-- ALTER TABLE public.post_stats ENABLE ROW LEVEL SECURITY; -- This is a view, not a table
+
+ALTER TABLE IF EXISTS public.market_listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.listing_media ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.listing_saves ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.listing_views ENABLE ROW LEVEL SECURITY; -- Table doesn't exist yet
+-- ALTER TABLE public.listing_stats ENABLE ROW LEVEL SECURITY; -- This is a view, not a table
+
+ALTER TABLE IF EXISTS public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.event_attendees ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.event_likes ENABLE ROW LEVEL SECURITY; -- Table doesn't exist yet
+-- ALTER TABLE public.event_views ENABLE ROW LEVEL SECURITY; -- Table doesn't exist yet
+-- ALTER TABLE public.event_stats ENABLE ROW LEVEL SECURITY; -- This is a view, not a table
+
+ALTER TABLE IF EXISTS public.garages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.garage_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.garage_reviews ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS public.bid_repair ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.bid_repair_replies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.bid_wallet ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS public.offers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.boost_entitlements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.wallet_transactions ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS public.verification_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.daily_challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.challenge_progress ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS public.push_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.push_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.push_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.push_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.push_deliveries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.user_push_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.user_push_settings ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS public.smtp_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.email_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.email_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.email_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.email_deliveries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.email_suppressions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.user_email_settings ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS public.brand_assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.analytics_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.exports ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- DROP EXISTING POLICIES (to avoid conflicts)
+-- ============================================================================
+
+DROP POLICY IF EXISTS "posts_select" ON public.posts;
+DROP POLICY IF EXISTS "posts_insert" ON public.posts;
+DROP POLICY IF EXISTS "posts_update" ON public.posts;
+DROP POLICY IF EXISTS "posts_delete" ON public.posts;
+
+-- ============================================================================
+-- POSTS - Public read approved, owner write
+-- ============================================================================
+
+CREATE POLICY "posts_public_read"
+  ON public.posts FOR SELECT
+  USING (status = 'approved');
+
+CREATE POLICY "posts_owner_insert"
+  ON public.posts FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "posts_owner_update"
+  ON public.posts FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "posts_owner_delete"
+  ON public.posts FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- COMMENTS - Public read, owner write
+-- ============================================================================
+
+CREATE POLICY "comments_public_read"
+  ON public.comments FOR SELECT
+  USING (true);
+
+CREATE POLICY "comments_owner_insert"
+  ON public.comments FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "comments_owner_update"
+  ON public.comments FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "comments_owner_delete"
+  ON public.comments FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- POST LIKES & SAVES - Owner only
+-- ============================================================================
+
+CREATE POLICY "post_likes_owner"
+  ON public.post_likes FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "post_saves_owner"
+  ON public.post_saves FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- POST REPORTS - Insert only, admin read (in app)
+-- ============================================================================
+
+CREATE POLICY "post_reports_insert"
+  ON public.post_reports FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- POST VIEWS & STATS - Public read
+-- ============================================================================
+-- (Skipped - tables don't exist yet)
+
+-- CREATE POLICY "post_views_public_read"
+--   ON public.post_views FOR SELECT
+--   USING (true);
+
+-- CREATE POLICY "post_stats_public_read"
+--   ON public.post_stats FOR SELECT
+--   USING (true);
+
+-- ============================================================================
+-- MARKET LISTINGS - Public read approved, owner write
+-- ============================================================================
+
+CREATE POLICY "listings_public_read"
+  ON public.market_listings FOR SELECT
+  USING (status IN ('approved', 'sold'));
+
+CREATE POLICY "listings_owner_insert"
+  ON public.market_listings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "listings_owner_update"
+  ON public.market_listings FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "listings_owner_delete"
+  ON public.market_listings FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- LISTING MEDIA - Owner only
+-- ============================================================================
+
+CREATE POLICY "listing_media_owner"
+  ON public.listing_media FOR ALL
+  USING (listing_id IN (SELECT id FROM public.market_listings WHERE user_id = auth.uid()))
+  WITH CHECK (listing_id IN (SELECT id FROM public.market_listings WHERE user_id = auth.uid()));
+
+-- ============================================================================
+-- LISTING SAVES & VIEWS - User actions
+-- ============================================================================
+
+CREATE POLICY "listing_saves_owner"
+  ON public.listing_saves FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "listing_views_public_read"
+  ON public.listing_views FOR SELECT
+  USING (true);
+
+CREATE POLICY "listing_stats_public_read"
+  ON public.listing_stats FOR SELECT
+  USING (true);
+
+-- ============================================================================
+-- EVENTS - Public read approved, owner write
+-- ============================================================================
+
+CREATE POLICY "events_public_read"
+  ON public.events FOR SELECT
+  USING (status = 'approved');
+
+CREATE POLICY "events_owner_insert"
+  ON public.events FOR INSERT
+  WITH CHECK (auth.uid() = creator_id);
+
+CREATE POLICY "events_owner_update"
+  ON public.events FOR UPDATE
+  USING (auth.uid() = creator_id)
+  WITH CHECK (auth.uid() = creator_id);
+
+CREATE POLICY "events_owner_delete"
+  ON public.events FOR DELETE
+  USING (auth.uid() = creator_id);
+
+-- ============================================================================
+-- EVENT ATTENDEES, LIKES, VIEWS - User actions
+-- ============================================================================
+
+CREATE POLICY "event_attendees_owner"
+  ON public.event_attendees FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "event_likes_owner"
+  ON public.event_likes FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "event_views_public_read"
+  ON public.event_views FOR SELECT
+  USING (true);
+
+CREATE POLICY "event_stats_public_read"
+  ON public.event_stats FOR SELECT
+  USING (true);
+
+-- ============================================================================
+-- GARAGES - Public read approved, owner write
+-- ============================================================================
+
+CREATE POLICY "garages_public_read"
+  ON public.garages FOR SELECT
+  USING (status = 'approved');
+
+CREATE POLICY "garages_owner_insert"
+  ON public.garages FOR INSERT
+  WITH CHECK (auth.uid() = owner_id);
+
+CREATE POLICY "garages_owner_update"
+  ON public.garages FOR UPDATE
+  USING (auth.uid() = owner_id)
+  WITH CHECK (auth.uid() = owner_id);
+
+-- ============================================================================
+-- GARAGE SERVICES & REVIEWS
+-- ============================================================================
+
+CREATE POLICY "garage_services_public_read"
+  ON public.garage_services FOR SELECT
+  USING (true);
+
+CREATE POLICY "garage_services_owner_write"
+  ON public.garage_services FOR ALL
+  USING (garage_id IN (SELECT id FROM public.garages WHERE owner_id = auth.uid()))
+  WITH CHECK (garage_id IN (SELECT id FROM public.garages WHERE owner_id = auth.uid()));
+
+CREATE POLICY "garage_reviews_public_read"
+  ON public.garage_reviews FOR SELECT
+  USING (true);
+
+CREATE POLICY "garage_reviews_owner_insert"
+  ON public.garage_reviews FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- BID REPAIR - Owner read/write, anonymous view
+-- ============================================================================
+
+CREATE POLICY "bid_repair_owner"
+  ON public.bid_repair FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Garage owners can view bids (anonymously) but NOT create
+CREATE POLICY "bid_repair_garage_read"
+  ON public.bid_repair FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+-- ============================================================================
+-- BID REPAIR REPLIES - Garage owner only
+-- ============================================================================
+
+CREATE POLICY "bid_replies_garage_insert"
+  ON public.bid_repair_replies FOR INSERT
+  WITH CHECK (auth.uid() = garage_id);
+
+CREATE POLICY "bid_replies_read"
+  ON public.bid_repair_replies FOR SELECT
+  USING (
+    auth.uid() = garage_id OR
+    auth.uid() IN (SELECT user_id FROM public.bid_repair WHERE id = bid_id)
+  );
+
+CREATE POLICY "bid_replies_garage_update"
+  ON public.bid_repair_replies FOR UPDATE
+  USING (auth.uid() = garage_id)
+  WITH CHECK (auth.uid() = garage_id);
+
+-- ============================================================================
+-- MESSAGES - Unlocked only after bid accepted/closed
+-- ============================================================================
+
+CREATE POLICY "messages_post_accept_insert"
+  ON public.messages FOR INSERT
+  WITH CHECK (
+    auth.uid() = sender_id AND
+    bid_id IN (SELECT id FROM public.bid_repair WHERE status IN ('accepted', 'closed'))
+  );
+
+CREATE POLICY "messages_post_accept_read"
+  ON public.messages FOR SELECT
+  USING (
+    bid_id IN (
+      SELECT id FROM public.bid_repair
+      WHERE (user_id = auth.uid() OR accepted_reply_id IN (
+        SELECT id FROM public.bid_repair_replies WHERE garage_id = auth.uid()
+      ))
+      AND status IN ('accepted', 'closed')
+    )
+  );
+
+-- ============================================================================
+-- BID WALLET - Garage owner only
+-- ============================================================================
+
+CREATE POLICY "bid_wallet_owner"
+  ON public.bid_wallet FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- OFFERS - Public read, admin write (checked in app)
+-- ============================================================================
+
+CREATE POLICY "offers_public_read"
+  ON public.offers FOR SELECT
+  USING (status = 'active' AND (start_date IS NULL OR start_date <= NOW()) AND (end_date IS NULL OR end_date >= NOW()));
+
+-- ============================================================================
+-- BOOST ENTITLEMENTS - Owner read
+-- ============================================================================
+
+CREATE POLICY "boost_owner_read"
+  ON public.boost_entitlements FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "boost_owner_insert"
+  ON public.boost_entitlements FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- WALLET TRANSACTIONS - Owner only
+-- ============================================================================
+
+CREATE POLICY "wallet_owner"
+  ON public.wallet_transactions FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- VERIFICATION REQUESTS - Owner only
+-- ============================================================================
+
+CREATE POLICY "verification_owner"
+  ON public.verification_requests FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- DAILY CHALLENGES - Public read
+-- ============================================================================
+
+CREATE POLICY "challenges_public_read"
+  ON public.daily_challenges FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "challenge_progress_owner"
+  ON public.challenge_progress FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- PUSH NOTIFICATIONS - Admin only (checked in app)
+-- ============================================================================
+
+CREATE POLICY "push_providers_read"
+  ON public.push_providers FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "push_templates_read"
+  ON public.push_templates FOR SELECT
+  USING (true);
+
+CREATE POLICY "user_push_tokens_owner"
+  ON public.user_push_tokens FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "user_push_settings_owner"
+  ON public.user_push_settings FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "push_deliveries_owner_read"
+  ON public.push_deliveries FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- EMAIL - Admin only (checked in app)
+-- ============================================================================
+
+CREATE POLICY "email_templates_read"
+  ON public.email_templates FOR SELECT
+  USING (true);
+
+CREATE POLICY "user_email_settings_owner"
+  ON public.user_email_settings FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "email_deliveries_owner_read"
+  ON public.email_deliveries FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- BRAND ASSETS - Public read
+-- ============================================================================
+
+CREATE POLICY "brand_assets_public_read"
+  ON public.brand_assets FOR SELECT
+  USING (is_active = true);
+
+-- ============================================================================
+-- ANALYTICS & AUDIT - Write for users, read for owner
+-- ============================================================================
+
+CREATE POLICY "analytics_insert"
+  ON public.analytics_events FOR INSERT
+  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "analytics_owner_read"
+  ON public.analytics_events FOR SELECT
+  USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "audit_insert"
+  ON public.audit_logs FOR INSERT
+  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+-- ============================================================================
+-- EXPORTS - Owner only
+-- ============================================================================
+
+CREATE POLICY "exports_owner"
+  ON public.exports FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+COMMENT ON POLICY "messages_post_accept_insert" ON public.messages IS 'Messages only allowed after bid is accepted or closed';
+COMMENT ON POLICY "bid_repair_garage_read" ON public.bid_repair IS 'Garage owners can view bids but NOT create them';
+COMMENT ON POLICY "bid_replies_garage_insert" ON public.bid_repair_replies IS 'Only garage owners can reply to bids';
+

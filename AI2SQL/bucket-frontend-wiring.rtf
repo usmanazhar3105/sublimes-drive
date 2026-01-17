@@ -1,0 +1,283 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2639
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Roman;\f1\froman\fcharset0 Times-Bold;\f2\fmodern\fcharset0 Courier;
+\f3\fnil\fcharset0 AppleColorEmoji;\f4\ftech\fcharset77 Symbol;\f5\fmodern\fcharset0 Courier-Bold;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\fs24 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Here's a complete set of 
+\f1\b frontend code snippets
+\f0\b0  for uploading to each Supabase bucket 
+\f1\b securely and correctly
+\f0\b0 , mapped to your app's functionality.\uc0\u8232 All examples use the 
+\f2\fs26 @supabase/supabase-js
+\f0\fs24  client (v2+).\
+\pard\pardeftab720\partightenfactor0
+\cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f3\fs36 \cf0 \uc0\u9989 
+\f1\b  Setup (Shared for All)\
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 // supabase.ts\
+import \{ createClient \} from '@supabase/supabase-js'\
+\
+export const supabase = createClient(\
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,\
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\
+)\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f3\fs36 \cf0 \uc0\u55358 \u56995 
+\f1\b  Uploading Media to Buckets\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b0\fs24 \cf0 Each example assumes:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sa240\partightenfactor0
+\ls1\ilvl0
+\f2\fs26 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 file
+\f0\fs24 : user-selected file (
+\f2\fs26 File
+\f0\fs24 )\
+\ls1\ilvl0
+\f2\fs26 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 userId
+\f0\fs24 : current user's UUID\
+\ls1\ilvl0
+\f2\fs26 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 entityId
+\f0\fs24 : e.g. post_id, listing_id (optional for naming)\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sa240\partightenfactor0
+\ls1\ilvl0\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Files are auto-approved by admin later (metadata: 
+\f2\fs26 \{ status: 'pending' \}
+\f0\fs24 )\
+\pard\pardeftab720\partightenfactor0
+\cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55357 \u56524 
+\f1\b  1. Community Posts 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 community-media
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadCommunityMedia(file: File, userId: string, postId?: string) \{\
+  const path = `$\{userId\}/$\{postId || 'new'\}_$\{Date.now()\}_$\{file.name\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('community-media')\
+    .upload(path, file, \{\
+      upsert: false,\
+      cacheControl: '3600',\
+      contentType: file.type,\
+      metadata: \{ status: 'pending' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('community-media').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55357 \u57037 \u65039 
+\f1\b  2. Marketplace Listings 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 marketplace-media
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadMarketplaceMedia(file: File, userId: string, listingId?: string) \{\
+  const path = `$\{userId\}/$\{listingId || 'draft'\}_$\{Date.now()\}_$\{file.name\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('marketplace-media')\
+    .upload(path, file, \{\
+      metadata: \{ status: 'pending' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('marketplace-media').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55357 \u57056 \u65039 
+\f1\b  3. Repair Bid Media (Anonymous) 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 bidrepair-media
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadBidRepairMedia(file: File, bidId?: string) \{\
+  const path = `anon/$\{bidId || 'temp'\}_$\{Date.now()\}_$\{file.name\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('bidrepair-media')\
+    .upload(path, file, \{\
+      metadata: \{ status: 'pending' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('bidrepair-media').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55357 \u56420 
+\f1\b  4. User Profile Avatar 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 profile-images
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadProfileImage(file: File, userId: string) \{\
+  const path = `$\{userId\}/avatar_$\{Date.now()\}.$\{file.name.split('.').pop()\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('profile-images')\
+    .upload(path, file, \{\
+      metadata: \{ status: 'approved' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('profile-images').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55358 \u56816 
+\f1\b  5. Garage Owner Media 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 garagehub-media
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadGarageMedia(file: File, userId: string, garageId: string) \{\
+  const path = `$\{garageId\}/$\{Date.now()\}_$\{file.name\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('garagehub-media')\
+    .upload(path, file, \{\
+      metadata: \{ status: 'pending' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('garagehub-media').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55356 \u57225 
+\f1\b  6. Event Photos 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 events-media
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadEventMedia(file: File, eventId: string) \{\
+  const path = `event/$\{eventId\}/$\{Date.now()\}_$\{file.name\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('events-media')\
+    .upload(path, file, \{\
+      metadata: \{ status: 'pending' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('events-media').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55357 \u56550 
+\f1\b  7. Import/Brand Kit 
+\f4\b0 \uc0\u8594 
+\f1\b  
+\f5\fs30\fsmilli15210 import-media
+\f1\fs28 , 
+\f5\fs30\fsmilli15210 brand-assets
+\f1\fs28 , 
+\f5\fs30\fsmilli15210 system-settings
+\f1\fs28 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf0 export async function uploadBrandAsset(file: File, type: 'logo' | 'banner' | 'preset') \{\
+  const path = `$\{type\}/$\{Date.now()\}_$\{file.name\}`\
+\
+  const \{ error \} = await supabase.storage\
+    .from('system-settings')\
+    .upload(path, file, \{\
+      metadata: \{ status: 'approved' \}\
+    \})\
+\
+  if (error) throw error\
+  return supabase.storage.from('system-settings').getPublicUrl(path).data.publicUrl\
+\}\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f3\fs28 \cf0 \uc0\u55356 \u57263 
+\f1\b  Upload Tip (Attach to Table)\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b0\fs24 \cf0 Once uploaded, you 
+\f1\b must save the returned URL or path to the related DB row
+\f0\b0 , e.g.:\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs26 \cf0 await supabase.from('community_posts').update(\{\
+  media_urls: [uploadedUrl]\
+\}).eq('id', postId)\
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Would you like:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sa240\partightenfactor0
+\ls2\ilvl0\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}
+\f3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 \uc0\u9989 
+\f0  React component wrappers for Dropzone + upload + preview?\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}
+\f3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 \uc0\u55357 \u56592 
+\f0  Secure server-side signed URL logic for protected uploads?\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}
+\f3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 \uc0\u55358 \u56828 
+\f0  Cleanup job to delete unused media after 48h?\
+}

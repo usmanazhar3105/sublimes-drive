@@ -1,0 +1,437 @@
+{
+  "source": "Master Prompt Specification + Typical Marketplace UI Patterns",
+  "generated_at": "2025-11-05T04:15:00Z",
+  "note": "Screenshots not provided - using comprehensive specification from prompt",
+  "detected_options": [
+    {
+      "option_id": "marketplace.nav.tab",
+      "surface": "User",
+      "description": "Main marketplace navigation tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "marketplace.search.input",
+      "surface": "User",
+      "description": "Search input for listings",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "marketplace.filters.brand",
+      "surface": "User",
+      "description": "Filter by vehicle brand",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.model",
+      "surface": "User",
+      "description": "Filter by vehicle model",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.price.min",
+      "surface": "User",
+      "description": "Minimum price filter",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "marketplace.filters.price.max",
+      "surface": "User",
+      "description": "Maximum price filter",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "marketplace.filters.year",
+      "surface": "User",
+      "description": "Filter by year range",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.mileage",
+      "surface": "User",
+      "description": "Filter by mileage range",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.body_type",
+      "surface": "User",
+      "description": "Filter by body type (sedan, suv, etc)",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.fuel",
+      "surface": "User",
+      "description": "Filter by fuel type",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.transmission",
+      "surface": "User",
+      "description": "Filter by transmission type",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.condition",
+      "surface": "User",
+      "description": "Filter by condition (new/used/refurbished)",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.location",
+      "surface": "User",
+      "description": "Filter by location/city",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "marketplace.filters.radius_km",
+      "surface": "User",
+      "description": "Radius filter in kilometers",
+      "ui_element": "slider",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "marketplace.filters.has_video",
+      "surface": "User",
+      "description": "Filter listings with video",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "marketplace.filters.has_inspection",
+      "surface": "User",
+      "description": "Filter listings with inspection report",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "marketplace.sort.latest",
+      "surface": "User",
+      "description": "Sort by latest first",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "marketplace.sort.price_low",
+      "surface": "User",
+      "description": "Sort by price low to high",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "marketplace.sort.price_high",
+      "surface": "User",
+      "description": "Sort by price high to low",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "marketplace.sort.distance",
+      "surface": "User",
+      "description": "Sort by distance from user",
+      "ui_element": "select_option",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "marketplace.sort.mileage_low",
+      "surface": "User",
+      "description": "Sort by mileage low to high",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "marketplace.map.toggle",
+      "surface": "User",
+      "description": "Toggle map view",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "marketplace.map.recenter",
+      "surface": "User",
+      "description": "Recenter map to user location",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "marketplace.map.apply_bounds",
+      "surface": "User",
+      "description": "Apply current map bounds as filter",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "listing.card.save",
+      "surface": "User",
+      "description": "Save/favorite listing",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.card.share",
+      "surface": "User",
+      "description": "Share listing",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.card.contact",
+      "surface": "User",
+      "description": "Contact seller",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.card.view_details",
+      "surface": "User",
+      "description": "View full listing details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.detail.gallery",
+      "surface": "User",
+      "description": "Image/video gallery",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "listing.detail.video",
+      "surface": "User",
+      "description": "Video player",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "listing.detail.specs",
+      "surface": "User",
+      "description": "Vehicle specifications table",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "listing.detail.location_map",
+      "surface": "User",
+      "description": "Location map",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "listing.detail.seller_profile",
+      "surface": "User",
+      "description": "Seller profile card",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "listing.detail.whatsapp",
+      "surface": "User",
+      "description": "WhatsApp contact button",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.detail.call_masked",
+      "surface": "User",
+      "description": "Masked phone call button",
+      "ui_element": "button",
+      "requires_edge_function": "phone-proxy"
+    },
+    {
+      "option_id": "listing.detail.report",
+      "surface": "User",
+      "description": "Report listing",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.create.start",
+      "surface": "User",
+      "description": "Start creating listing",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.create.upload_media",
+      "surface": "User",
+      "description": "Upload images/videos",
+      "ui_element": "component",
+      "requires_storage": "marketplace-media"
+    },
+    {
+      "option_id": "listing.create.set_location",
+      "surface": "User",
+      "description": "Set listing location",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "listing.create.preview",
+      "surface": "User",
+      "description": "Preview before submit",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "listing.create.submit",
+      "surface": "User",
+      "description": "Submit listing for review",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "marketplace.empty.no_results",
+      "surface": "User",
+      "description": "No results empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "marketplace.empty.clear_filters",
+      "surface": "User",
+      "description": "Clear all filters button",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "profile.marketplace.my_listings",
+      "surface": "Profile",
+      "description": "User's own listings tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.marketplace.saved",
+      "surface": "Profile",
+      "description": "Saved/favorited listings",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.marketplace.saved_searches",
+      "surface": "Profile",
+      "description": "Saved search filters",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.marketplace.messages",
+      "surface": "Profile",
+      "description": "Marketplace messages",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.marketplace.offers",
+      "surface": "Profile",
+      "description": "Offers made/received",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.marketplace.purchases",
+      "surface": "Profile",
+      "description": "Purchase history",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.marketplace.stats",
+      "surface": "Profile",
+      "description": "Marketplace statistics",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "profile.marketplace.billing",
+      "surface": "Profile",
+      "description": "Billing/fees",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.marketplace.queue.pending",
+      "surface": "Admin",
+      "description": "Pending listings queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.marketplace.approve",
+      "surface": "Admin",
+      "description": "Approve listing button",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.reject",
+      "surface": "Admin",
+      "description": "Reject listing button",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.feature",
+      "surface": "Admin",
+      "description": "Feature listing button",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.unfeature",
+      "surface": "Admin",
+      "description": "Unfeature listing button",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.bulk.select_all",
+      "surface": "Admin",
+      "description": "Bulk select all",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "admin.marketplace.bulk.approve",
+      "surface": "Admin",
+      "description": "Bulk approve selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.bulk.reject",
+      "surface": "Admin",
+      "description": "Bulk reject selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.bulk.export_csv",
+      "surface": "Admin",
+      "description": "Export to CSV",
+      "ui_element": "button",
+      "requires_edge_function": "export-csv"
+    },
+    {
+      "option_id": "admin.marketplace.edit.listing",
+      "surface": "Admin",
+      "description": "Edit listing details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.edit.tags",
+      "surface": "Admin",
+      "description": "Edit listing tags",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.marketplace.suspend_user",
+      "surface": "Admin",
+      "description": "Suspend user",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.marketplace.audit_log",
+      "surface": "Admin",
+      "description": "View audit log",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.marketplace.filters.brand",
+      "surface": "Admin",
+      "description": "Admin filter by brand",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.marketplace.filters.status",
+      "surface": "Admin",
+      "description": "Admin filter by status",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.marketplace.filters.date",
+      "surface": "Admin",
+      "description": "Admin filter by date range",
+      "ui_element": "date_picker"
+    },
+    {
+      "option_id": "admin.marketplace.filters.search.input",
+      "surface": "Admin",
+      "description": "Admin search input",
+      "ui_element": "input"
+    }
+  ],
+  "summary": {
+    "total_options": 69,
+    "by_surface": {
+      "User": 43,
+      "Profile": 8,
+      "Admin": 18
+    },
+    "requires_postgis": 7,
+    "requires_storage": 1,
+    "requires_edge_functions": 2
+  }
+}
+

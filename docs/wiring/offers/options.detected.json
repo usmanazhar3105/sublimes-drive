@@ -1,0 +1,381 @@
+{
+  "source": "Master Prompt Specification + Typical Offers UI Patterns",
+  "generated_at": "2025-11-05T04:40:00Z",
+  "note": "Screenshots not provided - using comprehensive specification from prompt",
+  "detected_options": [
+    {
+      "option_id": "offers.nav.tab",
+      "surface": "User",
+      "description": "Main offers navigation tab",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "offers.search.input",
+      "surface": "User",
+      "description": "Search offers by title/description",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "offers.filters.category",
+      "surface": "User",
+      "description": "Filter by offer category",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "offers.filters.brand",
+      "surface": "User",
+      "description": "Filter by vendor/brand",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "offers.filters.discount_min",
+      "surface": "User",
+      "description": "Minimum discount percentage",
+      "ui_element": "slider"
+    },
+    {
+      "option_id": "offers.filters.price_min",
+      "surface": "User",
+      "description": "Minimum price filter",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "offers.filters.price_max",
+      "surface": "User",
+      "description": "Maximum price filter",
+      "ui_element": "input"
+    },
+    {
+      "option_id": "offers.filters.valid_till",
+      "surface": "User",
+      "description": "Filter by expiry date range",
+      "ui_element": "date_picker"
+    },
+    {
+      "option_id": "offers.filters.location",
+      "surface": "User",
+      "description": "Filter by city/region",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "offers.filters.radius_km",
+      "surface": "User",
+      "description": "Radius filter in kilometers",
+      "ui_element": "slider",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "offers.filters.online_only",
+      "surface": "User",
+      "description": "Show only online offers",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "offers.filters.instore_only",
+      "surface": "User",
+      "description": "Show only in-store offers",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "offers.filters.code_required",
+      "surface": "User",
+      "description": "Show offers with promo codes",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "offers.filters.featured",
+      "surface": "User",
+      "description": "Show only featured offers",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "offers.sort.latest",
+      "surface": "User",
+      "description": "Sort by latest first",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "offers.sort.expiring_soon",
+      "surface": "User",
+      "description": "Sort by expiring soon",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "offers.sort.discount_high",
+      "surface": "User",
+      "description": "Sort by highest discount",
+      "ui_element": "select_option"
+    },
+    {
+      "option_id": "offers.sort.distance",
+      "surface": "User",
+      "description": "Sort by distance from user",
+      "ui_element": "select_option",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "offers.map.toggle",
+      "surface": "User",
+      "description": "Toggle map view",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "offers.map.recenter",
+      "surface": "User",
+      "description": "Recenter map to user location",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "offers.map.apply_bounds",
+      "surface": "User",
+      "description": "Apply map bounds as filter",
+      "ui_element": "button",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "offer.card.save",
+      "surface": "User",
+      "description": "Save/favorite offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.card.share",
+      "surface": "User",
+      "description": "Share offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.card.view_details",
+      "surface": "User",
+      "description": "View full offer details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.detail.gallery",
+      "surface": "User",
+      "description": "Offer image/video gallery",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "offer.detail.terms",
+      "surface": "User",
+      "description": "Terms and conditions",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "offer.detail.locations_map",
+      "surface": "User",
+      "description": "Multiple store locations on map",
+      "ui_element": "component",
+      "requires_postgis": true
+    },
+    {
+      "option_id": "offer.detail.copy_code",
+      "surface": "User",
+      "description": "Copy promo code",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.detail.show_qr",
+      "surface": "User",
+      "description": "Show QR code for scanning",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.detail.redeem_now",
+      "surface": "User",
+      "description": "Redeem offer (online)",
+      "ui_element": "button",
+      "requires_edge_function": "offers-redeem"
+    },
+    {
+      "option_id": "offer.detail.whatsapp",
+      "surface": "User",
+      "description": "Contact via WhatsApp",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.detail.call",
+      "surface": "User",
+      "description": "Call vendor",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offer.detail.report",
+      "surface": "User",
+      "description": "Report offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "offers.empty.no_results",
+      "surface": "User",
+      "description": "No offers found empty state",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "offers.empty.clear_filters",
+      "surface": "User",
+      "description": "Clear all filters",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "profile.offers.saved",
+      "surface": "Profile",
+      "description": "Saved/favorited offers",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.offers.my_redemptions",
+      "surface": "Profile",
+      "description": "Redemption history",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.offers.referrals",
+      "surface": "Profile",
+      "description": "Referral activity",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.offers.wallet",
+      "surface": "Profile",
+      "description": "Wallet credits from offers",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "profile.offers.settings",
+      "surface": "Profile",
+      "description": "Offer notification settings",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.offers.queue.pending",
+      "surface": "Admin",
+      "description": "Pending offers queue",
+      "ui_element": "tab"
+    },
+    {
+      "option_id": "admin.offers.approve",
+      "surface": "Admin",
+      "description": "Approve offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.reject",
+      "surface": "Admin",
+      "description": "Reject offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.feature",
+      "surface": "Admin",
+      "description": "Feature offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.unfeature",
+      "surface": "Admin",
+      "description": "Unfeature offer",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.schedule",
+      "surface": "Admin",
+      "description": "Schedule offer start/end dates",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.offers.end_now",
+      "surface": "Admin",
+      "description": "End offer immediately",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.bulk.select_all",
+      "surface": "Admin",
+      "description": "Bulk select all offers",
+      "ui_element": "checkbox"
+    },
+    {
+      "option_id": "admin.offers.bulk.approve",
+      "surface": "Admin",
+      "description": "Bulk approve selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.bulk.reject",
+      "surface": "Admin",
+      "description": "Bulk reject selected",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.bulk.export_csv",
+      "surface": "Admin",
+      "description": "Export offers/redemptions to CSV",
+      "ui_element": "button",
+      "requires_edge_function": "offers-export-csv"
+    },
+    {
+      "option_id": "admin.offers.edit.offer",
+      "surface": "Admin",
+      "description": "Edit offer details",
+      "ui_element": "button"
+    },
+    {
+      "option_id": "admin.offers.edit.locations",
+      "surface": "Admin",
+      "description": "Edit offer locations",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.offers.audit_log",
+      "surface": "Admin",
+      "description": "View offer audit log",
+      "ui_element": "component"
+    },
+    {
+      "option_id": "admin.offers.filters.status",
+      "surface": "Admin",
+      "description": "Filter by status",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.offers.filters.category",
+      "surface": "Admin",
+      "description": "Filter by category",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.offers.filters.brand",
+      "surface": "Admin",
+      "description": "Filter by vendor/brand",
+      "ui_element": "select"
+    },
+    {
+      "option_id": "admin.offers.filters.date",
+      "surface": "Admin",
+      "description": "Filter by date range",
+      "ui_element": "date_picker"
+    },
+    {
+      "option_id": "admin.offers.search.input",
+      "surface": "Admin",
+      "description": "Admin search input",
+      "ui_element": "input"
+    }
+  ],
+  "summary": {
+    "total_options": 61,
+    "by_surface": {
+      "User": 36,
+      "Profile": 5,
+      "Admin": 20
+    },
+    "requires_postgis": 7,
+    "requires_storage": 1,
+    "requires_edge_functions": 4
+  }
+}
+

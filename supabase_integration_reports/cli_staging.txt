@@ -1,0 +1,9 @@
+Staged migrations for optional CLI usage (no auto-apply performed)
+
+Source -> Destination
+AA- Transfer/supabase_integration_bundle/migrations/2025-11-10/008_profiles_alignment.sql -> supabase/migrations/2025-11-10/008_profiles_alignment.sql
+AA- Transfer/supabase_integration_bundle/migrations/2025-11-10/009_profiles_view_updatable.sql -> supabase/migrations/2025-11-10/009_profiles_view_updatable.sql
+
+Notes:
+- Use `supabase link --project-ref <REF>` once before applying via CLI.
+- This run followed the SQL Editor flow; no CLI apply was executed.

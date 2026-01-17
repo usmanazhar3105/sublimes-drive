@@ -1,0 +1,10 @@
+{
+  "post_create": true,
+  "post_update": true,
+  "post_like": true,
+  "post_comment": true,
+  "post_save": true,
+  "poll_vote": true,
+  "rls_enabled": true,
+  "media_storage_integrated": true
+}

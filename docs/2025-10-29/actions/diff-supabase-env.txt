@@ -1,0 +1,106 @@
++++ b/src/lib/env.ts
+@@ -0,0 +1,104 @@
++/**
++ * Environment Variables Gateway
++ * 
++ * Centralized access to environment variables with validation.
++ * All env vars should be accessed through this module.
++ * 
++ * @module lib/env
++ */
++
++// ============================================================================
++// SUPABASE CONFIGURATION
++// ============================================================================
++
++export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
++export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
++
++// Validate required Supabase credentials
++if (!SUPABASE_URL) {
++  throw new Error(
++    '❌ Missing VITE_SUPABASE_URL environment variable. ' +
++    'Please add it to your .env file. ' +
++    'See .env.example for template.'
++  );
++}
++
++if (!SUPABASE_ANON_KEY) {
++  throw new Error(
++    '❌ Missing VITE_SUPABASE_ANON_KEY environment variable. ' +
++    'Please add it to your .env file. ' +
++    'See .env.example for template.'
++  );
++}
++
++// ============================================================================
++// ANALYTICS & MONITORING (Optional)
++// ============================================================================
++
++export const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
++export const APP_VERSION = import.meta.env.VITE_APP_VERSION as string | undefined;
++export const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
++export const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST as string | undefined;
++
++// ============================================================================
++// PAYMENT INTEGRATION (Optional)
++// ============================================================================
++
++export const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
++
++// ============================================================================
++// MAPS INTEGRATION (Optional)
++// ============================================================================
++
++export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
++
++// ============================================================================
++// BUILD & RUNTIME
++// ============================================================================
++
++export const IS_PRODUCTION = import.meta.env.PROD;
++export const IS_DEVELOPMENT = import.meta.env.DEV;
++export const MODE = import.meta.env.MODE;
++
++// ============================================================================
++// HELPERS
++// ============================================================================
++
++/**
++ * Check if a feature is enabled based on environment variable
++ */
++export function isFeatureEnabled(featureName: string): boolean {
++  const envVar = import.meta.env[`VITE_FEATURE_${featureName.toUpperCase()}`];
++  return envVar === 'true' || envVar === '1';
++}
++
++/**
++ * Get environment variable with fallback
++ */
++export function getEnv(key: string, fallback?: string): string {
++  const value = import.meta.env[key];
++  if (value === undefined || value === '') {
++    if (fallback !== undefined) {
++      return fallback;
++    }
++    console.warn(`⚠️ Environment variable ${key} is not set`);
++    return '';
++  }
++  return value as string;
++}
++
++// ============================================================================
++// VALIDATION SUMMARY
++// ============================================================================
++
++// Log configuration status in development
++if (IS_DEVELOPMENT) {
++  console.log('🔧 Environment Configuration:');
++  console.log('  ✅ Supabase URL:', SUPABASE_URL ? '****' + SUPABASE_URL.slice(-20) : '❌ MISSING');
++  console.log('  ✅ Supabase Anon Key:', SUPABASE_ANON_KEY ? '****...' + SUPABASE_ANON_KEY.slice(-4) : '❌ MISSING');
++  console.log('  📊 Sentry:', SENTRY_DSN ? '✅ Configured' : '⚠️ Not configured');
++  console.log('  📊 PostHog:', POSTHOG_KEY ? '✅ Configured' : '⚠️ Not configured');
++  console.log('  💳 Stripe:', STRIPE_PUBLISHABLE_KEY ? '✅ Configured' : '⚠️ Not configured');
++  console.log('  🗺️  Google Maps:', GOOGLE_MAPS_API_KEY ? '✅ Configured' : '⚠️ Not configured');
++  console.log('  🏗️  Mode:', MODE);
++}

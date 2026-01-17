@@ -1,0 +1,8 @@
+== Supabase link status ==
+
+  
+   LINKED | ORG ID               | REFERENCE ID         | NAME                    | REGION              | CREATED AT (UTC)    
+  --------|----------------------|----------------------|-------------------------|---------------------|---------------------
+          | gjphtvhbdpbxdizfpyfy | ykylqivehqjuetbknzjr | sublimesdrive's Project | eu-north-1          | 2025-08-27 03:20:14 
+     ●    | nkosptupssipgziwwvwy | ehqytjpweoywmazwarlq | sublimesdrive-figma     | South Asia (Mumbai) | 2025-10-23 16:23:34 
+

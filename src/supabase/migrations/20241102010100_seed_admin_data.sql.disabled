@@ -1,0 +1,237 @@
+/**
+ * SEED DATA FOR admin@sublimesdrive.com
+ * 
+ * Creates sample data for testing and demonstration:
+ * - Community posts with comments and likes
+ * - Marketplace listings (cars and parts)
+ * - Verification requests
+ * - Analytics events
+ * 
+ * Date: 2025-11-02
+ */
+
+-- Get admin user ID
+DO $$
+DECLARE
+  admin_user_id UUID;
+BEGIN
+  -- Find or create admin user
+  SELECT id INTO admin_user_id
+  FROM profiles
+  WHERE email LIKE '%admin%sublimes%'
+  LIMIT 1;
+
+  IF admin_user_id IS NULL THEN
+    RAISE NOTICE 'Admin user not found, skipping seeding';
+    RETURN;
+  END IF;
+
+  RAISE NOTICE 'Seeding data for admin user: %', admin_user_id;
+
+  -- ============================================================================
+  -- 1. COMMUNITY POSTS
+  -- ============================================================================
+
+  -- Insert sample posts
+  INSERT INTO posts (id, user_id, title, body, status, is_pinned, created_at)
+  VALUES
+    (gen_random_uuid(), admin_user_id, 'Welcome to Sublimes Drive!', 'This is the first post on our platform. Share your car stories, ask questions, and connect with fellow enthusiasts!', 'approved', true, NOW() - INTERVAL '7 days'),
+    (gen_random_uuid(), admin_user_id, 'Best Garages in Dubai', 'Looking for recommendations for reliable garages in Dubai. Any suggestions?', 'approved', false, NOW() - INTERVAL '5 days'),
+    (gen_random_uuid(), admin_user_id, 'Car Meet This Weekend', 'Planning a car meet at Dubai Marina this Saturday at 6 PM. Who''s in?', 'approved', false, NOW() - INTERVAL '3 days'),
+    (gen_random_uuid(), admin_user_id, 'Tips for First-Time Car Buyers', 'Share your best tips for people buying their first car in the UAE!', 'approved', false, NOW() - INTERVAL '2 days'),
+    (gen_random_uuid(), admin_user_id, 'Modified Cars Showcase', 'Post photos of your modified cars! Let''s see what you''ve done.', 'approved', false, NOW() - INTERVAL '1 day')
+  ON CONFLICT DO NOTHING;
+
+  -- Add comments to first post
+  INSERT INTO comments (post_id, user_id, body, created_at)
+  SELECT 
+    p.id,
+    admin_user_id,
+    'Great to be here! Excited to connect with other car enthusiasts.',
+    NOW() - INTERVAL '6 days'
+  FROM posts p
+  WHERE p.user_id = admin_user_id AND p.title = 'Welcome to Sublimes Drive!'
+  LIMIT 1
+  ON CONFLICT DO NOTHING;
+
+  INSERT INTO comments (post_id, user_id, body, created_at)
+  SELECT 
+    p.id,
+    admin_user_id,
+    'This platform looks amazing! Can''t wait to share my builds.',
+    NOW() - INTERVAL '5 days'
+  FROM posts p
+  WHERE p.user_id = admin_user_id AND p.title = 'Welcome to Sublimes Drive!'
+  LIMIT 1
+  ON CONFLICT DO NOTHING;
+
+  -- Add likes to posts
+  INSERT INTO post_likes (post_id, user_id, created_at)
+  SELECT 
+    p.id,
+    admin_user_id,
+    NOW() - INTERVAL '4 days'
+  FROM posts p
+  WHERE p.user_id = admin_user_id
+  LIMIT 3
+  ON CONFLICT DO NOTHING;
+
+  -- ============================================================================
+  -- 2. MARKETPLACE LISTINGS
+  -- ============================================================================
+
+  -- Insert car listings
+  INSERT INTO market_listings (id, user_id, listing_type, title, description, price, status, created_at, data)
+  VALUES
+    (
+      gen_random_uuid(),
+      admin_user_id,
+      'car',
+      '2023 BMW M3 Competition',
+      'Excellent condition, low mileage, full service history. Comes with extended warranty.',
+      385000,
+      'approved',
+      NOW() - INTERVAL '10 days',
+      jsonb_build_object(
+        'make', 'BMW',
+        'model', 'M3',
+        'year', 2023,
+        'mileage', 5000,
+        'color', 'Alpine White',
+        'transmission', 'Automatic',
+        'fuel_type', 'Petrol',
+        'condition', 'Excellent'
+      )
+    ),
+    (
+      gen_random_uuid(),
+      admin_user_id,
+      'car',
+      '2022 Mercedes-Benz C300',
+      'Luxury sedan in pristine condition. Perfect for daily driving.',
+      195000,
+      'approved',
+      NOW() - INTERVAL '8 days',
+      jsonb_build_object(
+        'make', 'Mercedes-Benz',
+        'model', 'C300',
+        'year', 2022,
+        'mileage', 12000,
+        'color', 'Black',
+        'transmission', 'Automatic',
+        'fuel_type', 'Petrol',
+        'condition', 'Excellent'
+      )
+    ),
+    (
+      gen_random_uuid(),
+      admin_user_id,
+      'car',
+      '2021 Toyota Land Cruiser',
+      'Reliable SUV, perfect for families. Well maintained.',
+      285000,
+      'approved',
+      NOW() - INTERVAL '6 days',
+      jsonb_build_object(
+        'make', 'Toyota',
+        'model', 'Land Cruiser',
+        'year', 2021,
+        'mileage', 25000,
+        'color', 'White',
+        'transmission', 'Automatic',
+        'fuel_type', 'Diesel',
+        'condition', 'Very Good'
+      )
+    )
+  ON CONFLICT DO NOTHING;
+
+  -- Insert parts listings
+  INSERT INTO market_listings (id, user_id, listing_type, title, description, price, status, created_at, data)
+  VALUES
+    (
+      gen_random_uuid(),
+      admin_user_id,
+      'part',
+      'Performance Exhaust System - BMW M3/M4',
+      'Akrapovic titanium exhaust system. Brand new, never installed.',
+      15000,
+      'approved',
+      NOW() - INTERVAL '5 days',
+      jsonb_build_object(
+        'brand', 'Akrapovic',
+        'part_type', 'Exhaust System',
+        'compatible_models', ARRAY['BMW M3', 'BMW M4'],
+        'condition', 'New'
+      )
+    ),
+    (
+      gen_random_uuid(),
+      admin_user_id,
+      'part',
+      'Carbon Fiber Hood - Mercedes C-Class',
+      'Lightweight carbon fiber hood. Fits W205 C-Class.',
+      8500,
+      'approved',
+      NOW() - INTERVAL '4 days',
+      jsonb_build_object(
+        'brand', 'Vorsteiner',
+        'part_type', 'Hood',
+        'compatible_models', ARRAY['Mercedes C-Class W205'],
+        'condition', 'New'
+      )
+    )
+  ON CONFLICT DO NOTHING;
+
+  -- ============================================================================
+  -- 3. VERIFICATION REQUESTS
+  -- ============================================================================
+
+  -- Insert sample verification request
+  INSERT INTO verification_requests (user_id, verification_type, status, data, documents, submitted_at)
+  VALUES
+    (
+      admin_user_id,
+      'vehicle',
+      'approved',
+      jsonb_build_object(
+        'vehicle_make', 'BMW',
+        'vehicle_model', 'M3',
+        'vehicle_year', 2023,
+        'license_plate', 'D-12345',
+        'owner_name', 'Admin User'
+      ),
+      ARRAY['https://example.com/registration.pdf', 'https://example.com/insurance.pdf'],
+      NOW() - INTERVAL '15 days'
+    )
+  ON CONFLICT DO NOTHING;
+
+  -- ============================================================================
+  -- 4. ANALYTICS EVENTS
+  -- ============================================================================
+
+  -- Insert sample analytics events
+  INSERT INTO analytics_events (user_id, route, action, entity, created_at)
+  VALUES
+    (admin_user_id, '/communities', 'view', 'page', NOW() - INTERVAL '1 hour'),
+    (admin_user_id, '/marketplace', 'view', 'page', NOW() - INTERVAL '2 hours'),
+    (admin_user_id, '/profile', 'view', 'page', NOW() - INTERVAL '3 hours'),
+    (admin_user_id, '/admin', 'view', 'page', NOW() - INTERVAL '4 hours')
+  ON CONFLICT DO NOTHING;
+
+  RAISE NOTICE '';
+  RAISE NOTICE '✅ SEEDING COMPLETE!';
+  RAISE NOTICE '================================';
+  RAISE NOTICE '';
+  RAISE NOTICE 'Data Created:';
+  RAISE NOTICE '  ✅ 5 Community Posts';
+  RAISE NOTICE '  ✅ 2 Comments';
+  RAISE NOTICE '  ✅ 3 Post Likes';
+  RAISE NOTICE '  ✅ 3 Car Listings';
+  RAISE NOTICE '  ✅ 2 Parts Listings';
+  RAISE NOTICE '  ✅ 1 Verification Request';
+  RAISE NOTICE '  ✅ 4 Analytics Events';
+  RAISE NOTICE '';
+  RAISE NOTICE '🎉 ADMIN DATA READY FOR TESTING!';
+  RAISE NOTICE '';
+
+END $$;

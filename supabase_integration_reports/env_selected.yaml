@@ -1,0 +1,9 @@
+target_env: dev
+values:
+  VITE_SUPABASE_URL: "https://YOUR_PROJECT_ID.supabase.co"
+  VITE_SUPABASE_ANON_KEY: "YOUR_SUPABASE_ANON_KEY"
+  SUPABASE_SERVICE_ROLE_KEY: "****"  # redacted
+  SUPABASE_PROJECT_REF: "ehqytjpweoywmazwarlq"
+notes:
+  - "Service Role must never be embedded in client code."
+  - "Values sourced from .env.local and project-ref."

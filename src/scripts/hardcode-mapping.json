@@ -1,0 +1,64 @@
+{
+  "mapping_plan": {
+    "profile_data": {
+      "source": "components/ProfilePage.tsx - profileStats",
+      "target_table": "profiles",
+      "columns": ["display_name", "avatar_url", "locale", "vehicles"],
+      "owner_email": "test1@sublimesdrive.com",
+      "aggregations": {
+        "followers_count": "SELECT COUNT(*) FROM follows WHERE followee_id = user_id",
+        "following_count": "SELECT COUNT(*) FROM follows WHERE follower_id = user_id",
+        "posts_count": "SELECT COUNT(*) FROM posts WHERE author_id = user_id"
+      }
+    },
+    "communities": {
+      "source": "components/CommunitiesPage.tsx - mockCommunities",
+      "target_table": "communities",
+      "columns": ["slug", "title", "brand", "cover_url", "is_private", "owner_id"],
+      "owner_email": "test1@sublimesdrive.com",
+      "target_record_key": "bmw-uae, mercedes-dubai"
+    },
+    "marketplace_listings": {
+      "source": "components/MarketplacePage.tsx - sampleListings",
+      "target_table": "listings",
+      "columns": ["title", "description", "price", "currency", "status", "category", "brand", "model", "year", "mileage", "city", "country", "media"],
+      "owner_email": "test1@sublimesdrive.com",
+      "target_record_key": "listing-001, listing-002"
+    },
+    "garages": {
+      "source": "components/GarageHubPage.tsx - garages",
+      "target_table": "garages",
+      "columns": ["name", "phone", "email", "address", "services", "rating"],
+      "owner_email": "test2@sublimesdrive.com",
+      "target_record_key": "premium-auto-garage"
+    },
+    "events": {
+      "source": "components/EventsPage.tsx - upcomingEvents",
+      "target_table": "events",
+      "columns": ["title", "description", "starts_at", "ends_at", "address", "capacity", "brand", "cover_url"],
+      "owner_email": "test1@sublimesdrive.com",
+      "target_record_key": "bmw-meet-dubai"
+    },
+    "notifications": {
+      "source": "components/notifications/NotificationsPage.tsx - demoNotifications",
+      "target_table": "notifications",
+      "columns": ["type", "payload", "read_at"],
+      "owner_email": "test1@sublimesdrive.com",
+      "target_record_key": "notif-001, notif-002, notif-003"
+    },
+    "wallet_balance": {
+      "source": "components/WalletPage_Wired.tsx - mock balance",
+      "target_table": "wallets",
+      "columns": ["balance_cents", "hold_cents"],
+      "owner_email": "test1@sublimesdrive.com",
+      "target_record_key": "wallet-test1"
+    },
+    "xp_points": {
+      "source": "components/ProfilePage.tsx - xp display",
+      "target_table": "xp_events",
+      "columns": ["type", "points", "ref"],
+      "owner_email": "test1@sublimesdrive.com",
+      "target_record_key": "xp-signup, xp-first-post"
+    }
+  }
+}
