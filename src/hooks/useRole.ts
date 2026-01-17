@@ -55,15 +55,11 @@ export function useRole() {
                          user.email?.split('@')[0] || 
                          'User';
       
-      // Try to upsert profile
+      // Try to upsert profile - ONLY id field (role assigned by database DEFAULT)
       const { data: newProfile, error: upsertError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
-          email: user.email,
-          display_name: displayName,
-          role: 'user', // Default role for new users
-          created_at: new Date().toISOString(),
         }, { onConflict: 'id' })
         .select('role')
         .maybeSingle();

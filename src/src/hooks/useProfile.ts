@@ -77,11 +77,10 @@ export function useProfile(userId?: string) {
           setLoading(false);
           return;
         }
-        const display = (authed.user_metadata as any)?.full_name || authed.email?.split('@')[0] || 'User';
-        const roleFromMeta = ((authed.app_metadata as any)?.user_role || (authed.app_metadata as any)?.role) || null;
+        // Profile creation - ONLY id field (role assigned by database DEFAULT)
         const up = await supabase
           .from('profiles')
-          .upsert({ id: targetUserId, email: authed.email || '', display_name: display, role: roleFromMeta })
+          .upsert({ id: targetUserId }, { onConflict: 'id' })
           .select('*')
           .single();
         if (!up.error) {

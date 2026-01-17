@@ -393,20 +393,8 @@ app.post('/make-server-97527403/auth/signup', async (c) => {
       return c.json({ error: error.message }, 400);
     }
 
-    // Store user profile in database instead of KV store
-    try {
-      await supabase.from('profiles').insert({
-        user_id: data.user.id,
-        full_name: userData.full_name,
-        role: userData.role || 'car_browser',
-        location: userData.location,
-        xp_points: 0,
-        level: 1,
-        wallet_balance: 0,
-      });
-    } catch (err) {
-      console.log('Profile creation failed (will be created by trigger):', err);
-    }
+    // Profile creation handled by database trigger - do NOT insert from frontend
+    // The handle_new_user() trigger will create profile with DEFAULT role (subscriber)
 
     return c.json({ data, message: 'User created successfully' });
   } catch (error) {
