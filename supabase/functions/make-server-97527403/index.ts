@@ -630,45 +630,71 @@ app.post('/posts', async (c) => {
     const media = Array.isArray(body.images) ? body.images : (Array.isArray(body.media) ? body.media : []);
     const rawUrg = ((body.urgency || body.urgency_level || '') + '').toLowerCase();
     const urgency = rawUrg === 'urgent' ? 'urgent' : (rawUrg === 'important' || rawUrg === 'high') ? 'high' : (rawUrg === 'medium') ? 'medium' : (rawUrg === 'normal' || rawUrg === 'low') ? 'low' : null;
-    const payload = {
-      user_id: user.id,
-      title: body.title || 'Untitled Post',
-      content: text,
-      body: text,
-      media,
-      tags: Array.isArray(body.tags) ? body.tags : [],
-      location: body.location || null,
-      car_brand: body.car_brand || null,
-      car_model: body.car_model || null,
-      urgency,
-      status: 'approved',
-      is_anonymous: typeof body.is_anonymous === 'boolean' ? !!body.is_anonymous : false,
-      created_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from('posts').insert(payload as any).select('*').single();
-    if (error) {
-      // Fallback 1: minimal payload for content-based schema
-      const minimal: any = {
-        user_id: user.id,
-        content: body.content || '',
-        status: 'approved',  // Ensure status is set
-      };
-      const retry1 = await supabase.from('posts').insert(minimal).select('*').single();
-      if (retry1.error) {
-        // Fallback 2: body/media fields for alternate schema
-        const alt: any = {
+    
+    // ✅ Use RPC function instead of direct insert to avoid post_stats VIEW issues
+    const { data: postId, error: rpcError } = await supabase.rpc('fn_create_post', {
+      p_title: body.title || 'Untitled Post',
+      p_body: text,
+      p_content: text,
+      p_media: media,
+      p_tags: Array.isArray(body.tags) ? body.tags : [],
+      p_location: body.location || null,
+      p_car_brand: body.car_brand || null,
+      p_car_model: body.car_model || null,
+      p_urgency: urgency || null,
+      p_community_id: null
+    });
+    
+    if (rpcError) {
+      // Fallback: try direct insert (but skip post_stats)
+      try {
+        const payload = {
           user_id: user.id,
-          body: body.content || body.body || '',
-          media: Array.isArray(body.images) ? body.images : (Array.isArray(body.media) ? body.media : []),
-          status: 'approved',  // Ensure status is set
+          title: body.title || 'Untitled Post',
+          content: text,
+          body: text,
+          media,
+          tags: Array.isArray(body.tags) ? body.tags : [],
+          location: body.location || null,
+          car_brand: body.car_brand || null,
+          car_model: body.car_model || null,
+          urgency,
+          status: 'approved',
+          is_anonymous: typeof body.is_anonymous === 'boolean' ? !!body.is_anonymous : false,
+          created_at: new Date().toISOString(),
         };
-        const retry2 = await supabase.from('posts').insert(alt).select('*').single();
-        if (retry2.error) return c.json({ error: retry2.error.message, hint: 'fallback_insert_failed_alt' }, 400);
-        return c.json({ post: retry2.data, hint: 'fallback_insert_used_alt' });
+        const { data, error } = await supabase.from('posts').insert(payload as any).select('*').single();
+        if (error) {
+          // Last fallback: minimal payload
+          const minimal: any = {
+            user_id: user.id,
+            title: body.title || 'Untitled Post',
+            content: text,
+            body: text,
+            status: 'approved',
+          };
+          const retry = await supabase.from('posts').insert(minimal).select('*').single();
+          if (retry.error) return c.json({ error: retry.error.message, hint: 'fallback_insert_failed_alt' }, 400);
+          return c.json({ post: retry.data, hint: 'fallback_insert_used' });
+        }
+        return c.json({ post: data, hint: 'direct_insert_used' });
+      } catch (fallbackErr: any) {
+        return c.json({ error: fallbackErr.message || rpcError.message, hint: 'fallback_insert_failed_alt' }, 400);
       }
-      return c.json({ post: retry1.data, hint: 'fallback_insert_used' });
     }
-    return c.json({ post: data });
+    
+    // Fetch the created post
+    const { data: post, error: fetchError } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('id', postId)
+      .single();
+    
+    if (fetchError) {
+      return c.json({ error: fetchError.message, hint: 'post_created_but_fetch_failed' }, 400);
+    }
+    
+    return c.json({ post, hint: 'rpc_used' });
   } catch (err: any) {
     return c.json({ error: err.message || 'Internal error' }, 500);
   }
@@ -702,19 +728,35 @@ app.delete('/posts/:id', async (c) => {
 app.post('/posts/:id/view', async (c) => {
   try {
     const postId = c.req.param('id');
-    // Best-effort increment; non-fatal if permissions not set yet
+    // Best-effort increment; non-fatal if permissions not set yet or if post_stats is a VIEW
     try {
+      // Check if post_stats is a TABLE (not a VIEW) before trying to update
+      const { data: tableCheck } = await supabase
+        .rpc('pg_typeof', { value: 'post_stats' })
+        .catch(() => ({ data: null }));
+      
+      // Try to get current stats (works for both TABLE and VIEW)
       const { data: stats } = await supabase
         .from('post_stats')
         .select('view_count')
         .eq('post_id', postId)
         .maybeSingle();
-      const current = (stats as any)?.view_count || 0;
-      await supabase
-        .from('post_stats')
-        .upsert({ post_id: postId, view_count: current + 1 }, { onConflict: 'post_id' });
+      
+      // Only try to update if we got data (means it's a TABLE, not a VIEW)
+      // If it's a VIEW, the stats are calculated automatically, so no update needed
+      if (stats) {
+        const current = (stats as any)?.view_count || 0;
+        // Try to upsert, but catch errors if it's a VIEW
+        await supabase
+          .from('post_stats')
+          .upsert({ post_id: postId, view_count: current + 1 }, { onConflict: 'post_id' })
+          .catch(() => {
+            // If upsert fails (likely because it's a VIEW), that's OK
+            // Views calculate stats automatically
+          });
+      }
     } catch (_e) {
-      // ignore
+      // ignore - post_stats might be a VIEW which calculates stats automatically
     }
     return c.json({ success: true, note: 'view increment best-effort' });
   } catch (err: any) {

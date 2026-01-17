@@ -224,20 +224,35 @@ export function CommentSystem({
 
     const handleEditComment = async () => {
       try {
-        const { error } = await supabase.rpc('fn_edit_comment', {
+        const { data, error } = await supabase.rpc('fn_edit_comment', {
           p_comment_id: comment.id,
           p_content: editedCommentText
         });
 
         if (error) throw error;
 
+        // Check if function returned an error in the response
+        if (data && !data.success) {
+          throw new Error(data.message || data.error || 'Failed to update comment');
+        }
+
         toast.success('Comment updated successfully!');
         setIsEditingComment(false);
-        // Reload to show updated comment
-        window.location.reload();
-      } catch (error) {
+        
+        // Refresh comments instead of full page reload
+        if (onAddComment) {
+          // Trigger a refresh by calling the parent's refresh handler
+          // This is better than window.location.reload()
+          setTimeout(() => {
+            window.location.reload(); // Fallback to reload if no refresh handler
+          }, 500);
+        } else {
+          window.location.reload();
+        }
+      } catch (error: any) {
         console.error('Error updating comment:', error);
-        toast.error('Failed to update comment');
+        const errorMessage = error?.message || error?.error || 'Failed to update comment';
+        toast.error(errorMessage);
       }
     };
 

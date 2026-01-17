@@ -1,0 +1,555 @@
+-- ============================================================================
+-- MISSING TABLES COMPLETE - ALL REMAINING TABLES
+-- Date: 2025-01-03
+-- Purpose: Add all missing tables identified in gap analysis
+-- Note: ADDITIVE ONLY - IF NOT EXISTS everywhere
+-- ============================================================================
+
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================================
+-- 1. GARAGE HUB COMPLETE
+-- ============================================================================
+
+-- Garages table
+CREATE TABLE IF NOT EXISTS public.garages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  location TEXT NOT NULL,
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  phone TEXT,
+  email TEXT,
+  website TEXT,
+  working_hours JSONB DEFAULT '{}'::JSONB,
+  specializations TEXT[],
+  services TEXT[],
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  is_featured BOOLEAN DEFAULT FALSE,
+  is_boosted BOOLEAN DEFAULT FALSE,
+  rating DECIMAL(3,2) DEFAULT 0,
+  review_count INTEGER DEFAULT 0,
+  view_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'garages' AND column_name = 'owner_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_garages_owner ON public.garages(owner_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'garages' AND column_name = 'status') THEN
+    CREATE INDEX IF NOT EXISTS idx_garages_status ON public.garages(status);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'garages' AND column_name = 'location') THEN
+    CREATE INDEX IF NOT EXISTS idx_garages_location ON public.garages(location);
+  END IF;
+END $$;
+
+-- Garage media
+CREATE TABLE IF NOT EXISTS public.garage_media (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  garage_id UUID NOT NULL REFERENCES public.garages(id) ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_garage_media_garage ON public.garage_media(garage_id);
+
+-- Garage services
+CREATE TABLE IF NOT EXISTS public.garage_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  garage_id UUID NOT NULL REFERENCES public.garages(id) ON DELETE CASCADE,
+  service_name TEXT NOT NULL,
+  description TEXT,
+  price_range TEXT,
+  duration_minutes INTEGER,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_garage_services_garage ON public.garage_services(garage_id);
+
+-- ============================================================================
+-- 2. BID REPAIR COMPLETE SYSTEM
+-- ============================================================================
+
+-- Bid requests (from users)
+CREATE TABLE IF NOT EXISTS public.bid_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  vehicle_info JSONB DEFAULT '{}'::JSONB,
+  media JSONB DEFAULT '[]'::JSONB,
+  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'accepted', 'closed', 'cancelled')),
+  accepted_reply_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_requests' AND column_name = 'user_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_requests_user ON public.bid_requests(user_id);
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_requests' AND column_name = 'owner_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_requests_owner ON public.bid_requests(owner_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_requests' AND column_name = 'status') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_requests_status ON public.bid_requests(status);
+  END IF;
+END $$;
+
+-- Bid replies (from garages)
+CREATE TABLE IF NOT EXISTS public.bid_replies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bid_request_id UUID NOT NULL REFERENCES public.bid_requests(id) ON DELETE CASCADE,
+  garage_id UUID NOT NULL REFERENCES public.garages(id) ON DELETE CASCADE,
+  estimated_cost DECIMAL(10,2) NOT NULL,
+  estimated_hours INTEGER,
+  notes TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_replies' AND column_name = 'bid_request_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_replies_request ON public.bid_replies(bid_request_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_replies' AND column_name = 'garage_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_replies_garage ON public.bid_replies(garage_id);
+  END IF;
+END $$;
+
+-- Bid threads (conversation container)
+CREATE TABLE IF NOT EXISTS public.bid_threads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bid_request_id UUID NOT NULL REFERENCES public.bid_requests(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  garage_id UUID NOT NULL REFERENCES public.garages(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'closed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_threads' AND column_name = 'bid_request_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_threads_request ON public.bid_threads(bid_request_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_threads' AND column_name = 'user_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_threads_user ON public.bid_threads(user_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_threads' AND column_name = 'garage_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_threads_garage ON public.bid_threads(garage_id);
+  END IF;
+END $$;
+
+-- Bid messages (unlocked after accept)
+CREATE TABLE IF NOT EXISTS public.bid_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id UUID NOT NULL REFERENCES public.bid_threads(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  message_type TEXT DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'location', 'emoji')),
+  content TEXT NOT NULL,
+  media_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_messages' AND column_name = 'thread_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_messages_thread ON public.bid_messages(thread_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bid_messages' AND column_name = 'sender_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_bid_messages_sender ON public.bid_messages(sender_id);
+  END IF;
+END $$;
+
+-- ============================================================================
+-- 3. NOTIFICATIONS COMPLETE SYSTEM
+-- ============================================================================
+
+-- Push notification templates
+CREATE TABLE IF NOT EXISTS public.push_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  title_template TEXT NOT NULL,
+  body_template TEXT NOT NULL,
+  data_template JSONB DEFAULT '{}'::JSONB,
+  category TEXT DEFAULT 'general',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Push campaigns
+CREATE TABLE IF NOT EXISTS public.push_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  template_id UUID REFERENCES public.push_templates(id),
+  segment_id UUID REFERENCES public.push_segments(id),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'failed')),
+  scheduled_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  recipient_count INTEGER DEFAULT 0,
+  delivered_count INTEGER DEFAULT 0,
+  opened_count INTEGER DEFAULT 0,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_campaigns_status ON public.push_campaigns(status);
+
+-- Push deliveries
+CREATE TABLE IF NOT EXISTS public.push_deliveries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID NOT NULL REFERENCES public.push_campaigns(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'failed', 'opened')),
+  sent_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  opened_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_deliveries_campaign ON public.push_deliveries(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_push_deliveries_user ON public.push_deliveries(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_deliveries_status ON public.push_deliveries(status);
+
+-- Push providers
+CREATE TABLE IF NOT EXISTS public.push_providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  provider_type TEXT NOT NULL CHECK (provider_type IN ('fcm', 'apns', 'expo')),
+  config JSONB NOT NULL DEFAULT '{}'::JSONB,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User push tokens
+CREATE TABLE IF NOT EXISTS public.user_push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  device_type TEXT NOT NULL CHECK (device_type IN ('ios', 'android', 'web')),
+  is_active BOOLEAN DEFAULT TRUE,
+  last_used_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user ON public.user_push_tokens(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_push_tokens_token ON public.user_push_tokens(token);
+
+-- User push settings
+CREATE TABLE IF NOT EXISTS public.user_push_settings (
+  user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  enabled BOOLEAN DEFAULT TRUE,
+  categories JSONB DEFAULT '{}'::JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email templates
+CREATE TABLE IF NOT EXISTS public.email_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  subject_template TEXT NOT NULL,
+  html_template TEXT NOT NULL,
+  text_template TEXT,
+  category TEXT DEFAULT 'general',
+  variables JSONB DEFAULT '[]'::JSONB,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email campaigns
+CREATE TABLE IF NOT EXISTS public.email_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  template_id UUID REFERENCES public.email_templates(id),
+  segment_id UUID,
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'failed')),
+  scheduled_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  recipient_count INTEGER DEFAULT 0,
+  delivered_count INTEGER DEFAULT 0,
+  opened_count INTEGER DEFAULT 0,
+  clicked_count INTEGER DEFAULT 0,
+  bounced_count INTEGER DEFAULT 0,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_status ON public.email_campaigns(status);
+
+-- Email deliveries
+CREATE TABLE IF NOT EXISTS public.email_deliveries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES public.email_campaigns(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  email TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'bounced', 'failed', 'opened', 'clicked')),
+  sent_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  opened_at TIMESTAMPTZ,
+  clicked_at TIMESTAMPTZ,
+  bounced_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_deliveries_campaign ON public.email_deliveries(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_email_deliveries_email ON public.email_deliveries(email);
+CREATE INDEX IF NOT EXISTS idx_email_deliveries_status ON public.email_deliveries(status);
+
+-- SMTP configs
+CREATE TABLE IF NOT EXISTS public.smtp_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  host TEXT NOT NULL,
+  port INTEGER NOT NULL,
+  username TEXT NOT NULL,
+  password TEXT NOT NULL,
+  from_email TEXT NOT NULL,
+  from_name TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email suppressions (bounces, complaints)
+CREATE TABLE IF NOT EXISTS public.email_suppressions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('bounce', 'complaint', 'unsubscribe')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email_suppressions_email ON public.email_suppressions(email);
+
+-- User email settings
+CREATE TABLE IF NOT EXISTS public.user_email_settings (
+  user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  enabled BOOLEAN DEFAULT TRUE,
+  categories JSONB DEFAULT '{}'::JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================================
+-- 4. OFFERS & COUPONS
+-- ============================================================================
+
+-- Offers
+CREATE TABLE IF NOT EXISTS public.offers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  offer_type TEXT NOT NULL CHECK (offer_type IN ('discount', 'free_service', 'bundle', 'seasonal')),
+  discount_percentage DECIMAL(5,2),
+  discount_amount DECIMAL(10,2),
+  coupon_code TEXT,
+  media JSONB DEFAULT '[]'::JSONB,
+  terms TEXT,
+  start_date TIMESTAMPTZ NOT NULL,
+  end_date TIMESTAMPTZ NOT NULL,
+  max_redemptions INTEGER,
+  current_redemptions INTEGER DEFAULT 0,
+  is_featured BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_offers_active ON public.offers(is_active);
+-- Fixed: offers table uses valid_from/valid_until, not start_date/end_date
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'offers' AND column_name = 'valid_from') THEN
+    CREATE INDEX IF NOT EXISTS idx_offers_dates ON public.offers(valid_from, valid_until);
+  END IF;
+END $$;
+
+-- Offer redemptions
+CREATE TABLE IF NOT EXISTS public.offer_redemptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  offer_id UUID NOT NULL REFERENCES public.offers(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  redeemed_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(offer_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_offer_redemptions_offer ON public.offer_redemptions(offer_id);
+CREATE INDEX IF NOT EXISTS idx_offer_redemptions_user ON public.offer_redemptions(user_id);
+
+-- ============================================================================
+-- 5. SUPPORT & KNOWLEDGE BASE
+-- ============================================================================
+
+-- Knowledge base categories
+CREATE TABLE IF NOT EXISTS public.kb_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon TEXT,
+  display_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Knowledge base articles
+CREATE TABLE IF NOT EXISTS public.kb_articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID REFERENCES public.kb_categories(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  content TEXT NOT NULL,
+  excerpt TEXT,
+  view_count INTEGER DEFAULT 0,
+  helpful_count INTEGER DEFAULT 0,
+  not_helpful_count INTEGER DEFAULT 0,
+  is_published BOOLEAN DEFAULT FALSE,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Fixed: conditional index creation for kb_articles
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'kb_articles' AND column_name = 'category_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_kb_articles_category ON public.kb_articles(category_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'kb_articles' AND column_name = 'is_published') THEN
+    CREATE INDEX IF NOT EXISTS idx_kb_articles_published ON public.kb_articles(is_published);
+  END IF;
+END $$;
+
+-- Support tickets
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  category TEXT NOT NULL,
+  priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'waiting', 'resolved', 'closed')),
+  assigned_to UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON public.support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON public.support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_assigned ON public.support_tickets(assigned_to);
+
+-- Support messages
+CREATE TABLE IF NOT EXISTS public.support_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticket_id UUID NOT NULL REFERENCES public.support_tickets(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::JSONB,
+  is_internal BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON public.support_messages(ticket_id);
+
+-- ============================================================================
+-- 6. LEGAL & CONSENT
+-- ============================================================================
+
+-- Legal pages
+CREATE TABLE IF NOT EXISTS public.legal_pages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  page_type TEXT NOT NULL CHECK (page_type IN ('terms', 'privacy', 'cookies', 'community_guidelines', 'data_policy')),
+  version TEXT NOT NULL,
+  content TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT FALSE,
+  effective_date TIMESTAMPTZ NOT NULL,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(page_type, version)
+);
+
+-- Fixed: conditional index creation for legal_pages
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'legal_pages' AND column_name = 'page_type') THEN
+    CREATE INDEX IF NOT EXISTS idx_legal_pages_type ON public.legal_pages(page_type);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'legal_pages' AND column_name = 'is_active') THEN
+    CREATE INDEX IF NOT EXISTS idx_legal_pages_active ON public.legal_pages(is_active);
+  END IF;
+END $$;
+
+-- User consents
+CREATE TABLE IF NOT EXISTS public.user_consents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  page_id UUID NOT NULL REFERENCES public.legal_pages(id),
+  consent_given BOOLEAN NOT NULL,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_consents_user ON public.user_consents(user_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_consents' AND column_name = 'page_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_user_consents_page ON public.user_consents(page_id);
+  END IF;
+END $$;
+
+-- ============================================================================
+-- 7. SECURITY & SESSIONS
+-- ============================================================================
+
+-- Security events
+CREATE TABLE IF NOT EXISTS public.security_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL CHECK (event_type IN ('login', 'logout', 'failed_login', 'password_change', 'account_lock', 'suspicious_activity')),
+  ip_address INET,
+  user_agent TEXT,
+  details JSONB DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_security_events_user ON public.security_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_security_events_type ON public.security_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_security_events_created ON public.security_events(created_at);
+
+-- ============================================================================
+-- SUCCESS MESSAGE
+-- ============================================================================
+
+DO $$
+BEGIN
+  RAISE NOTICE '✅ ALL MISSING TABLES CREATED SUCCESSFULLY!';
+  RAISE NOTICE 'Created:';
+  RAISE NOTICE '  - Garage Hub: garages, garage_media, garage_services';
+  RAISE NOTICE '  - Bid Repair: bid_requests, bid_replies, bid_threads, bid_messages';
+  RAISE NOTICE '  - Push Notifications: templates, campaigns, deliveries, providers, tokens, settings';
+  RAISE NOTICE '  - Email: templates, campaigns, deliveries, smtp_configs, suppressions, settings';
+  RAISE NOTICE '  - Offers: offers, offer_redemptions';
+  RAISE NOTICE '  - Support: kb_categories, kb_articles, support_tickets, support_messages';
+  RAISE NOTICE '  - Legal: legal_pages, user_consents';
+  RAISE NOTICE '  - Security: security_events';
+END $$;
+

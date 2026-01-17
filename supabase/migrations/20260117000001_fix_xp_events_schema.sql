@@ -57,3 +57,5 @@ END $$;
 -- 
 -- Should show: id, user_id, kind, points (NOT xp_amount), meta, created_at
 
+
+

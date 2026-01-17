@@ -52,29 +52,34 @@ export function useCommunityInteractions() {
         toast.success(parentId ? 'Reply added!' : 'Comment added!');
         return { ok: true } as any;
       }
-      // ✅ Use Edge Function to insert into public.comments (supports parent_comment_id)
-      const payload: any = { body, parent_id: parentId || null, media: media ?? null };
-      const res = await apiCall(`/posts/${postId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }, true);
+      
+      // ✅ Use RPC function directly for reliability
+      const { data, error: rpcError } = await supabase.rpc('fn_add_comment', {
+        p_post_id: postId,
+        p_body: body,
+        p_parent_id: parentId || null
+      });
+      
+      if (rpcError) throw rpcError;
+      
+      // Check if function returned an error in the response
+      if (data && !data.success) {
+        throw new Error(data.message || data.error || 'Failed to add comment');
+      }
+      
       toast.success(parentId ? 'Reply added!' : 'Comment added!');
-      // Return the created comment id if present; else the response
-      return res?.comment?.id ?? res;
+      // Return the created comment from the response
+      return data?.comment || { id: data?.comment?.id, success: true };
     } catch (error: any) {
-      // Fallback: direct insert into community_comments (no threading)
+      // Fallback: try Edge Function
       try {
-        const { data: userData } = await supabase.auth.getUser();
-        const uid = userData?.user?.id;
-        if (!uid) throw error;
-        const { data, error: insertErr } = await supabase
-          .from('community_comments')
-          .insert({ post_id: postId, author_id: uid, content: body })
-          .select('id')
-          .single();
-        if (insertErr) throw insertErr;
-        toast.success('Comment added!');
-        return data?.id ?? true;
+        const payload: any = { body, parent_id: parentId || null, media: media ?? null };
+        const res = await apiCall(`/posts/${postId}/comments`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }, true);
+        toast.success(parentId ? 'Reply added!' : 'Comment added!');
+        return res?.comment?.id ?? res;
       } catch (fallbackErr: any) {
         const msg = fallbackErr?.message || (error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error || {}));
         console.error('Error adding comment:', msg);
@@ -123,8 +128,42 @@ export function useCommunityInteractions() {
   const getComments = async (postId: string) => {
     try {
       if (!isUuid(postId)) return [] as any[];
-      const data = await publicApiCall(`/posts/${postId}/comments`);
-      return (data as any)?.comments || [];
+      
+      // ✅ Use direct Supabase query for reliability
+      const { data: comments, error: queryError } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            display_name,
+            avatar_url,
+            username
+          )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      
+      if (queryError) {
+        console.warn('Direct query failed, trying API:', queryError);
+        // Fallback to API
+        const data = await publicApiCall(`/posts/${postId}/comments`);
+        return (data as any)?.comments || [];
+      }
+      
+      // Enrich comments with user data
+      const enriched = (comments || []).map((c: any) => ({
+        ...c,
+        content: c.body || c.content || '',
+        body: c.body || c.content || '',
+        user: c.profiles ? {
+          display_name: c.profiles.display_name,
+          avatar_url: c.profiles.avatar_url,
+          username: c.profiles.username
+        } : {}
+      }));
+      
+      return enriched;
     } catch (error: any) {
       console.error('Error getting comments:', error);
       return [];
