@@ -418,11 +418,20 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
         } catch (directErr: any) {
           // Fallback 2: RPC minimal create
           const rpcTitle = title.trim() || content.trim().substring(0, 50) || pollQuestion.trim().substring(0, 50) || 'Untitled Post';
+          const rpcContent = (content || pollQuestion || '').trim() || '[Image Post]';
+          
+          // Try the unified function signature
           const { data: postId, error: rpcError } = await supabase.rpc('fn_create_post', {
             p_title: rpcTitle,
-            p_body: (content || pollQuestion || '').trim() || '[Image Post]',
+            p_body: rpcContent,
+            p_content: rpcContent,
+            p_media: uploadedMedia || [],
+            p_tags: tags || [],
             p_community_id: null,
-            p_media: uploadedMedia || []
+            p_location: location.trim() || null,
+            p_car_brand: (carBrand === 'Other' ? customBrand.trim() : carBrand) || null,
+            p_car_model: (carModel === 'Other' ? customModel.trim() : carModel) || null,
+            p_urgency: urgencyLevel || null
           });
           if (rpcError) {
             toast.error('Failed to create post: ' + (apiErr?.message || directErr?.message || rpcError.message));
