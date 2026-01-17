@@ -53,9 +53,10 @@ Thumbs.db
 docs/**/*.md
 src/**/*.md
 
-# Exclude SQL files
+# Exclude SQL files (but allow migrations)
 *.sql
 **/*.sql
+!supabase/migrations/*.sql
 *.psql
 **/*.psql
 
