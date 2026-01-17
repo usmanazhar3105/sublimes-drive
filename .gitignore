@@ -84,7 +84,9 @@ deployment-package.zip
 **/secrets/**
 **/*secret*
 **/*key*
-**/*password*
+**/*password*.env
+**/*password*.config
+**/*password*.json
 **/*credential*
 **/*token*
 *.pem
