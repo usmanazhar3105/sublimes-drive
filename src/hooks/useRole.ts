@@ -29,25 +29,31 @@ export function useRole() {
         .maybeSingle();
 
       if (error) {
-        console.warn('Error fetching role:', error.message);
-        // Try to create profile if it doesn't exist
+        // Only log unexpected errors
+        if (error.code !== 'PGRST116' && !error.message.includes('0 rows') && !error.message.includes('not found')) {
+          console.warn('Error fetching role:', error.message);
+        }
+        // Try to create profile if it doesn't exist (silently)
         if (error.code === 'PGRST116' || error.message.includes('0 rows') || error.message.includes('not found')) {
           // Silently try to create - don't spam errors if it fails
-          await createProfileForUser(user);
+          createProfileForUser(user).catch(() => {
+            // Silently fail - DB trigger will create profile
+          });
         }
       } else if (data) {
         setRole(data.role);
         setIsAdmin(data.role === 'admin' || data.role === 'super-admin');
         setIsGarageOwner(data.role === 'garage_owner');
       } else {
-        // Profile doesn't exist - try to create one (silently)
-        // Don't show errors - let DB trigger handle it if frontend fails
+        // Profile doesn't exist - try to create one (silently, non-blocking)
+        // Don't await - let it run in background, DB trigger will handle it
         createProfileForUser(user).catch(() => {
           // Silently fail - DB trigger will create profile on next auth event
         });
       }
     } catch (err) {
-      console.error('Error in loadRole:', err);
+      // Silently fail - set default role
+      setRole('subscriber');
     } finally {
       setLoading(false);
     }
