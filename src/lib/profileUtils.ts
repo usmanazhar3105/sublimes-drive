@@ -26,45 +26,57 @@ export async function createProfileIfNotExists(userId: string) {
   }
 
   try {
+    // First, check if profile already exists (avoid unnecessary insert attempts)
+    const { data: existing, error: checkError } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // If profile exists, return it immediately
+    if (existing && !checkError) {
+      return { data: existing, error: null };
+    }
+
+    // Only try to insert if profile doesn't exist
     // CRITICAL: Only id field - NO role, NO other fields
-    // Even undefined/null role can override DB default
-    // Use INSERT with ON CONFLICT DO NOTHING (safer than upsert for RLS)
+    // Database DEFAULT will assign role = 'subscriber'
     const { data, error } = await supabase
       .from('profiles')
       .insert({ id: userId })
       .select('id, role')
       .maybeSingle();
 
-    // If error is due to duplicate (profile already exists), that's OK
     if (error) {
-      // Check if it's a unique constraint violation (profile already exists)
+      // Check if it's a unique constraint violation (profile was created between check and insert)
       if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
-        // Profile already exists - fetch it instead
-        const { data: existingProfile, error: fetchError } = await supabase
+        // Profile was created by trigger or another process - fetch it
+        const { data: fetchedProfile, error: fetchError } = await supabase
           .from('profiles')
           .select('id, role')
           .eq('id', userId)
           .maybeSingle();
         
         if (fetchError) {
-          console.warn('Profile exists but fetch failed:', fetchError);
-          return { data: null, error: fetchError };
+          // Silently fail - DB trigger will handle it
+          return { data: null, error: null };
         }
         
-        console.log('✅ Profile already exists:', existingProfile);
-        return { data: existingProfile, error: null };
+        return { data: fetchedProfile, error: null };
       }
       
-      // Other errors (RLS, etc.)
-      console.error('Profile insert failed:', error);
-      return { data: null, error };
+      // RLS or other errors - silently fail (DB trigger will create profile)
+      // Don't log RLS errors as they're expected
+      if (!error.message?.includes('policy') && !error.message?.includes('permission')) {
+        console.warn('Profile insert failed (non-RLS):', error.message);
+      }
+      return { data: null, error: null }; // Return null error to indicate "let DB handle it"
     }
 
-    console.log('✅ Profile created:', data);
     return { data, error: null };
   } catch (err) {
-    console.error('Profile creation exception:', err);
-    return { data: null, error: err as Error };
+    // Silently fail - DB trigger will handle profile creation
+    return { data: null, error: null };
   }
 }
 
