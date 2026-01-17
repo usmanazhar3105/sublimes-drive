@@ -70,62 +70,63 @@ BEGIN
   );
   v_body := v_content; -- Use same value for both if both columns exist
   
-  -- Insert post - handle both body and content columns
-  INSERT INTO public.posts (
-    user_id,
-    title,
-    content,
-    body,
-    images,
-    media,
-    tags,
-    location,
-    car_brand,
-    car_model,
-    urgency,
-    status,
-    created_at
-  )
-  SELECT
-    v_user_id,
-    v_title,
-    v_content,
-    CASE WHEN EXISTS (
-      SELECT 1 FROM information_schema.columns 
-      WHERE table_schema = 'public' 
-      AND table_name = 'posts' 
-      AND column_name = 'body'
-    ) THEN v_body ELSE NULL END,
-    CASE WHEN EXISTS (
-      SELECT 1 FROM information_schema.columns 
-      WHERE table_schema = 'public' 
-      AND table_name = 'posts' 
-      AND column_name = 'images'
-    ) THEN 
-      CASE 
-        WHEN jsonb_typeof(p_media) = 'array' THEN p_media
-        ELSE '[]'::JSONB
-      END
-    ELSE NULL END,
-    CASE WHEN EXISTS (
-      SELECT 1 FROM information_schema.columns 
-      WHERE table_schema = 'public' 
-      AND table_name = 'posts' 
-      AND column_name = 'media'
-    ) THEN 
-      CASE 
-        WHEN jsonb_typeof(p_media) = 'array' THEN p_media
-        ELSE '[]'::JSONB
-      END
-    ELSE NULL END,
-    COALESCE(p_tags, '{}'::TEXT[]),
-    NULLIF(TRIM(p_location), ''),
-    NULLIF(TRIM(p_car_brand), ''),
-    NULLIF(TRIM(p_car_model), ''),
-    NULLIF(TRIM(p_urgency), ''),
-    'approved',
-    NOW()
-  RETURNING id INTO v_post_id;
+  -- CRITICAL: Ensure title is NEVER null (even if empty string, use default)
+  IF v_title IS NULL OR v_title = '' THEN
+    v_title := 'Untitled Post';
+  END IF;
+  
+  -- Insert post - try with all columns, let database handle missing ones
+  -- This approach is simpler and more reliable
+  BEGIN
+    INSERT INTO public.posts (
+      user_id,
+      title,
+      content,
+      body,
+      images,
+      media,
+      tags,
+      location,
+      car_brand,
+      car_model,
+      urgency,
+      status,
+      created_at
+    )
+    VALUES (
+      v_user_id,
+      v_title,
+      v_content,
+      v_body,
+      CASE WHEN jsonb_typeof(p_media) = 'array' THEN p_media ELSE '[]'::JSONB END,
+      CASE WHEN jsonb_typeof(p_media) = 'array' THEN p_media ELSE '[]'::JSONB END,
+      COALESCE(p_tags, '{}'::TEXT[]),
+      NULLIF(TRIM(p_location), ''),
+      NULLIF(TRIM(p_car_brand), ''),
+      NULLIF(TRIM(p_car_model), ''),
+      NULLIF(TRIM(p_urgency), ''),
+      'approved',
+      NOW()
+    )
+    RETURNING id INTO v_post_id;
+  EXCEPTION WHEN undefined_column THEN
+    -- If some columns don't exist, try minimal insert
+    INSERT INTO public.posts (
+      user_id,
+      title,
+      content,
+      status,
+      created_at
+    )
+    VALUES (
+      v_user_id,
+      v_title,
+      v_content,
+      'approved',
+      NOW()
+    )
+    RETURNING id INTO v_post_id;
+  END;
   
   -- Initialize post_stats if table exists
   IF EXISTS (

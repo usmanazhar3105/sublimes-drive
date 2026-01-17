@@ -65,15 +65,14 @@ END $$;
 
 DO $$
 BEGIN
-  -- Make title nullable (will use DEFAULT if not provided)
+  -- CRITICAL: Make title nullable AND ensure DEFAULT exists
   IF EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema = 'public' 
     AND table_name = 'posts' 
     AND column_name = 'title'
-    AND is_nullable = 'NO'
   ) THEN
-    -- First ensure DEFAULT exists
+    -- First ensure DEFAULT exists (CRITICAL - prevents null errors)
     IF NOT EXISTS (
       SELECT 1 FROM information_schema.columns 
       WHERE table_schema = 'public' 
@@ -82,10 +81,22 @@ BEGIN
       AND column_default IS NOT NULL
     ) THEN
       ALTER TABLE public.posts ALTER COLUMN title SET DEFAULT 'Untitled Post';
+      RAISE NOTICE '✅ Added DEFAULT ''Untitled Post'' to posts.title';
     END IF;
     
-    ALTER TABLE public.posts ALTER COLUMN title DROP NOT NULL;
-    RAISE NOTICE '✅ Made posts.title nullable with DEFAULT';
+    -- Then make it nullable (allows NULL, but DEFAULT will be used if not provided)
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'posts' 
+      AND column_name = 'title'
+      AND is_nullable = 'NO'
+    ) THEN
+      ALTER TABLE public.posts ALTER COLUMN title DROP NOT NULL;
+      RAISE NOTICE '✅ Made posts.title nullable';
+    END IF;
+  ELSE
+    RAISE WARNING '⚠️ posts.title column does not exist';
   END IF;
 
   -- Make content nullable (image-only posts)

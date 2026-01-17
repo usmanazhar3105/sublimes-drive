@@ -262,12 +262,8 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
         return;
       }
 
-      // Validate required fields
-      if (!title.trim()) {
-        toast.error('Title is required');
-        setSubmitting(false);
-        return;
-      }
+      // Title is optional - will use content preview or default if empty
+      // No validation needed - backend will handle it
 
       const hasContentOrMedia = (content && content.trim().length > 0) || uploadedFiles.length > 0 || (postType === 'poll' && pollQuestion.trim().length > 0);
       if (!hasContentOrMedia) {
