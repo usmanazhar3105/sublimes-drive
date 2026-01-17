@@ -105,12 +105,40 @@ import { Button } from './components/ui/button';
 import { useProfile } from './hooks';
 
 export default function App() {
-  // Log app start
-  console.log('🚀 Sublimes Drive App Starting...');
-  
   // Check for environment variable errors
   const envError = typeof window !== 'undefined' ? (window as any).__ENV_ERROR__ : null;
+  
+  // Initialize currentPage from URL pathname
+  const getInitialPage = () => {
+    if (typeof window === 'undefined') return 'welcome';
+    const path = window.location.pathname.slice(1); // Remove leading '/'
+    return path || 'welcome';
+  };
+  
+  const [isDark, setIsDark] = useState(true);
+  const [currentPage, setCurrentPage] = useState(getInitialPage());
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [selectedGarageId, setSelectedGarageId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [listingData, setListingData] = useState<any>(null);
+  const [listingType, setListingType] = useState<'marketplace' | 'garage'>('marketplace');
+  const [paymentData, setPaymentData] = useState<any>(null);
+  const [appError, setAppError] = useState<string | null>(null);
+  const [e2eRan, setE2ERan] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  
+  // Ref to track if initial session has been handled to prevent redirect loops
+  const initialSessionHandledRef = useRef(false);
+  
+  // Only load profile if authenticated (prevents unnecessary re-renders)
   const { profile } = useProfile();
+  
+  // Log app start only once
+  useEffect(() => {
+    console.log('🚀 Sublimes Drive App Starting...');
+  }, []);
   
   // Show error screen if environment variables are missing
   if (envError) {
