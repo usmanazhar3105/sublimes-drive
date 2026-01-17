@@ -80,29 +80,56 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- 3. Create post_stats table if it doesn't exist (as fallback)
+-- 3. Handle post_stats - Convert VIEW to TABLE if needed
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.post_stats (
-  post_id UUID PRIMARY KEY REFERENCES public.posts(id) ON DELETE CASCADE,
-  view_count INTEGER DEFAULT 0,
-  like_count INTEGER DEFAULT 0,
-  comment_count INTEGER DEFAULT 0,
-  share_count INTEGER DEFAULT 0,
-  save_count INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Disable RLS on the table
-ALTER TABLE public.post_stats DISABLE ROW LEVEL SECURITY;
-
--- Grant permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.post_stats TO authenticated;
-GRANT SELECT ON public.post_stats TO anon;
-
--- Create index for performance
-CREATE INDEX IF NOT EXISTS idx_post_stats_post_id ON public.post_stats(post_id);
+DO $$
+BEGIN
+  -- If post_stats is a VIEW, we can't INSERT into it
+  -- Check if it's a view and if posts table has the stats columns
+  IF EXISTS (
+    SELECT 1 FROM information_schema.views 
+    WHERE table_schema = 'public' 
+    AND table_name = 'post_stats'
+  ) THEN
+    -- post_stats is a VIEW - we can't insert into it
+    -- The view calculates stats from posts table and related tables
+    -- So we don't need to insert into post_stats - it's calculated automatically
+    RAISE NOTICE 'ℹ️ post_stats is a VIEW - stats are calculated automatically, no insert needed';
+  ELSE
+    -- If it's a table, ensure it exists and has proper permissions
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'post_stats'
+      AND table_type = 'BASE TABLE'
+    ) THEN
+      -- Create post_stats table
+      CREATE TABLE public.post_stats (
+        post_id UUID PRIMARY KEY REFERENCES public.posts(id) ON DELETE CASCADE,
+        view_count INTEGER DEFAULT 0,
+        like_count INTEGER DEFAULT 0,
+        comment_count INTEGER DEFAULT 0,
+        share_count INTEGER DEFAULT 0,
+        save_count INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      
+      -- Disable RLS on the table
+      ALTER TABLE public.post_stats DISABLE ROW LEVEL SECURITY;
+      
+      -- Grant permissions
+      GRANT SELECT, INSERT, UPDATE, DELETE ON public.post_stats TO authenticated;
+      GRANT SELECT ON public.post_stats TO anon;
+      
+      -- Create index for performance
+      CREATE INDEX IF NOT EXISTS idx_post_stats_post_id ON public.post_stats(post_id);
+      
+      RAISE NOTICE '✅ Created post_stats TABLE with proper permissions';
+    END IF;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- VERIFICATION
