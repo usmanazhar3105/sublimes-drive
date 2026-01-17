@@ -35,9 +35,7 @@ export function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
   const canAccessAdmin = (
     isAdmin ||
     isEditor ||
-    profile?.role === 'admin' ||
-    (profile as any)?.role === 'admin' ||
-    (profile as any)?.is_admin === true
+    profile?.role === 'admin'
   );
 
   const navigation = [
