@@ -143,31 +143,8 @@ export default function App() {
       </div>
     );
   }
-  
-  // Initialize currentPage from URL pathname
-  const getInitialPage = () => {
-    const path = window.location.pathname.slice(1); // Remove leading '/'
-    return path || 'welcome';
-  };
-  
-  const [isDark, setIsDark] = useState(true);
-  const [currentPage, setCurrentPage] = useState(getInitialPage());
-  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(false); // New state for admin mode
-  const [selectedGarageId, setSelectedGarageId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [listingData, setListingData] = useState<any>(null);
-  const [listingType, setListingType] = useState<'marketplace' | 'garage'>('marketplace');
-  const [paymentData, setPaymentData] = useState<any>(null);
-  const [appError, setAppError] = useState<string | null>(null);
-  const [e2eRan, setE2ERan] = useState(false);
-  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
-  
-  // Ref to track if initial session has been handled to prevent redirect loops
-  const initialSessionHandledRef = useRef(false);
 
-  // Handle OAuth callback on mount
+  // Handle OAuth callback on mount (only run once)
   useEffect(() => {
     // Check for OAuth callback in URL hash
     const urlHash = window.location.hash;
@@ -181,11 +158,14 @@ export default function App() {
     
     // Check if we're on /home path after OAuth (pathname might be /home but currentPage is wrong)
     // Only update if there's actually a mismatch to prevent infinite loops
-    if (window.location.pathname === '/home' && currentPage !== 'home') {
+    // Use a ref to track if we've already synced
+    const pathname = window.location.pathname;
+    if (pathname === '/home' && currentPage !== 'home') {
       console.log('🔄 Detected /home path, syncing currentPage...');
       setCurrentPage('home');
     }
-  }, [currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - don't depend on currentPage to avoid loops
 
   // Sync URL with currentPage state
   useEffect(() => {
