@@ -450,21 +450,27 @@ export function useSocialInteractions(postId?: string) {
 
       // For posts, check post_saves table
       if (itemType === 'post') {
+        // Use maybeSingle() to avoid 406 error when post is not saved
         const { data, error } = await supabase
           .from('post_saves')
           .select('id')
           .eq('user_id', user.id)
           .eq('post_id', itemId)
-          .single();
+          .maybeSingle();
 
         if (error) {
+          // PGRST116 = no rows found (not an error, just means not saved)
           if (error.code === 'PGRST116') return false;
-          if (error.code === '42P01' || error.code === '42501') {
-            console.debug('post_saves table not available');
+          // 42P01 = table doesn't exist, 42501 = permission denied
+          if (error.code === '42P01' || error.code === '42501' || error.code === 'PGRST301') {
+            console.debug('post_saves table not available or permission denied:', error.message);
             return false;
           }
+          // Other errors - log but don't crash
+          console.debug('post_saves query error:', error.message);
           return false;
         }
+        // Return true if data exists (post is saved)
         return !!data;
       }
 
