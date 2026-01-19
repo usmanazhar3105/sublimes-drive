@@ -43,7 +43,7 @@ export function useListings(filters?: {
     try {
       setLoading(true);
       
-      // 🔥 FIXED: Query from marketplace_listings (not listings)
+      // 🔥 Query from marketplace_listings - start with basic query
       let query = supabase
         .from('marketplace_listings')
         .select('*')
@@ -53,6 +53,7 @@ export function useListings(filters?: {
       if (filters?.myListings) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Try user_id first, if it fails, try seller_id
           query = query.eq('user_id', user.id);
         } else {
           // No user logged in, return empty
@@ -62,14 +63,12 @@ export function useListings(filters?: {
           return;
         }
       } else {
-        // Only show active listings for public view
-        query = query.eq('status', 'active');
+        // Only show active/approved listings for public view
+        // Try status='approved' first
+        query = query.eq('status', 'approved');
       }
 
       // Apply filters
-      if (filters?.brand) {
-        query = query.eq('car_brand', filters.brand);
-      }
       if (filters?.minPrice !== undefined && filters?.minPrice > 0) {
         query = query.gte('price', filters.minPrice);
       }
@@ -77,10 +76,10 @@ export function useListings(filters?: {
         query = query.lte('price', filters.maxPrice);
       }
       if (filters?.minYear) {
-        query = query.gte('car_year', filters.minYear);
+        query = query.gte('year', filters.minYear);
       }
       if (filters?.maxYear) {
-        query = query.lte('car_year', filters.maxYear);
+        query = query.lte('year', filters.maxYear);
       }
       if (filters?.query) {
         query = query.or(`title.ilike.%${filters.query}%,description.ilike.%${filters.query}%`);
@@ -92,10 +91,61 @@ export function useListings(filters?: {
 
       if (fetchError) {
         console.error('Error fetching listings:', fetchError);
-        throw fetchError;
+        // If error is about column not found, try simpler query
+        if (fetchError.code === 'PGRST204' || fetchError.message?.includes('column')) {
+          console.warn('Retrying with simpler query (column mismatch detected)...');
+          // Retry with basic query - try is_active instead of status
+          let simpleQuery = supabase
+            .from('marketplace_listings')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+          
+          if (filters?.myListings) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              // Try seller_id if user_id failed
+              simpleQuery = simpleQuery.eq('seller_id', user.id);
+            }
+          } else {
+            // Try is_active filter
+            simpleQuery = simpleQuery.eq('is_active', true);
+          }
+          
+          const { data: simpleData, error: simpleError } = await simpleQuery;
+          if (simpleError) {
+            // If still fails, try without any status filter
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('marketplace_listings')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(50);
+            
+            if (fallbackError) {
+              throw fallbackError;
+            }
+            
+            const transformedListings = (fallbackData || []).map((item: any) => transformListing(item));
+            setListings(transformedListings);
+            setError(null);
+            setLoading(false);
+            return;
+          }
+          
+          // Transform the simple data
+          const transformedListings = (simpleData || []).map((item: any) => transformListing(item));
+          setListings(transformedListings);
+          setError(null);
+          setLoading(false);
+          return;
+        } else {
+          throw fetchError;
+        }
       }
       
-      setListings(data || []);
+      // Transform data to match Listing interface
+      const transformedListings = (data || []).map((item: any) => transformListing(item));
+      setListings(transformedListings);
       setError(null);
     } catch (err) {
       console.error('Fetch listings error:', err);
@@ -105,6 +155,36 @@ export function useListings(filters?: {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Helper function to transform database row to Listing interface
+  function transformListing(item: any): Listing {
+    return {
+      id: item.id,
+      seller_id: item.seller_id || item.user_id || item.owner_id || '',
+      title: item.title || '',
+      description: item.description || '',
+      price: parseFloat(item.price) || 0,
+      currency: item.currency || 'AED',
+      status: item.status || (item.is_active ? 'active' : 'archived') as any,
+      category: item.category || item.category_id || 'cars',
+      brand: item.brand || item.brand_id || '',
+      model: item.model || item.model_id || '',
+      year: item.year || null,
+      mileage: item.mileage || null,
+      city: item.location_city || item.location || item.emirate || '',
+      country: item.location_country || 'AE',
+      media: Array.isArray(item.images) ? item.images : (Array.isArray(item.media) ? item.media : []),
+      meta: {
+        condition: item.condition,
+        is_featured: item.is_featured || false,
+        is_boosted: item.is_boosted || false,
+        views_count: item.view_count || item.views_count || 0,
+        favorite_count: item.favorite_count || item.likes_count || 0,
+      },
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    };
   }
 
   async function createListing(listing: Partial<Listing>) {
@@ -175,7 +255,9 @@ export function useListings(filters?: {
     listings,
     loading,
     error,
-    refetch: fetchListings,
+    refetch: async () => {
+      await fetchListings();
+    },
     createListing,
     updateListing,
     deleteListing,

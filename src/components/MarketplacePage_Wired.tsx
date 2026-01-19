@@ -104,8 +104,7 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
     .filter(listing => {
       if (selectedCategory !== 'all' && listing.category !== selectedCategory) return false;
       if (location !== 'all' && listing.city !== location) return false;
-      if (verifiedOnly && !listing.seller?.isVerified) return false;
-      if (featuredOnly && !listing.isFeatured) return false;
+      if (featuredOnly && !listing.meta?.is_featured) return false;
       if (showMyListings && listing.seller_id !== profile?.id) return false;
       return true;
     })
@@ -116,9 +115,11 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
         case 'oldest':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'price_low':
-          return a.price - b.price;
+          return (a.price || 0) - (b.price || 0);
         case 'price_high':
-          return b.price - a.price;
+          return (b.price || 0) - (a.price || 0);
+        case 'popular':
+          return (b.meta?.views_count || 0) - (a.meta?.views_count || 0);
         default:
           return 0;
       }
@@ -423,7 +424,17 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
             {filteredListings.map((listing) => (
               <ListingCard
                 key={listing.id}
-                listing={listing}
+                listing={{
+                  ...listing,
+                  images: listing.media || [],
+                  location: listing.city || listing.location || '',
+                  isFeatured: listing.meta?.is_featured || false,
+                  is_boosted: listing.meta?.is_boosted || false,
+                  views: listing.meta?.views_count || 0,
+                  view_count: listing.meta?.views_count || 0,
+                  created_at: listing.created_at,
+                  boost_expires_at: listing.meta?.boosted_until,
+                }}
                 isFavorite={favoriteIds.includes(listing.id)}
                 onToggleFavorite={() => toggleFavorite(listing.id)}
                 onBoost={() => handleBoostListing(listing)}
