@@ -131,10 +131,10 @@ export function WalletTopUpModal({ isOpen, onClose }: WalletTopUpModalProps) {
             </Button>
             <Button
               onClick={handleTopUp}
-              disabled={loading || !amount || parseFloat(amount) < 10}
+              disabled={topUpLoading || !amount || parseFloat(amount) < 10}
               className="flex-1 bg-[#D4AF37] text-black hover:bg-[#C19B2E] disabled:opacity-50"
             >
-              {loading ? 'Processing...' : 'Proceed to Payment'}
+              {topUpLoading ? 'Processing...' : 'Proceed to Payment'}
             </Button>
           </div>
         </div>
