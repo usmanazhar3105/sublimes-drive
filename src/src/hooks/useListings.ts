@@ -189,13 +189,106 @@ export function useListings(filters?: {
 
   async function createListing(listing: Partial<Listing>) {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Map fields to correct database column names
+      // The database has: location, emirate (NOT city)
+      // Also has: user_id, title, description, price, currency, category, condition, images, is_active
+      // Does NOT have: brand, model, year, mileage, country, meta, status as direct columns
+      const dbPayload: any = {
+        user_id: user.id,
+        title: listing.title,
+        description: listing.description,
+        price: listing.price,
+        currency: listing.currency || 'AED',
+        category: listing.category,
+        is_active: !listing.status || (listing.status !== 'archived' && listing.status !== 'sold'), // Map status to is_active
+      };
+
+      // Map city to location and emirate (database doesn't have 'city' column)
+      if ((listing as any).city) {
+        dbPayload.location = (listing as any).city;
+        dbPayload.emirate = (listing as any).city;
+      } else if ((listing as any).location) {
+        dbPayload.location = (listing as any).location;
+        dbPayload.emirate = (listing as any).location;
+      }
+
+      // Map condition
+      if ((listing as any).meta?.condition) {
+        dbPayload.condition = (listing as any).meta.condition;
+      } else if (listing.condition) {
+        dbPayload.condition = listing.condition;
+      }
+
+      // Map media/images - use images column
+      if ((listing as any).media && Array.isArray((listing as any).media)) {
+        dbPayload.images = (listing as any).media;
+      } else if ((listing as any).images && Array.isArray((listing as any).images)) {
+        dbPayload.images = (listing as any).images;
+      }
+
+      // Note: brand, model, year, mileage, country, meta don't exist as direct columns
+      // in the schema, so we skip them to avoid column errors
+
       const { data, error: createError } = await supabase
         .from('marketplace_listings')
-        .insert([listing])
+        .insert([dbPayload])
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Error creating listing:', createError);
+        // If error is about missing columns, try simpler payload
+        if (createError.code === 'PGRST204' || createError.message?.includes('column')) {
+          console.warn('Retrying with minimal payload (column mismatch)...');
+          
+          // Try with minimal required fields only
+          const simplePayload: any = {
+            user_id: user.id,
+            title: listing.title,
+            description: listing.description || '',
+            price: listing.price,
+            currency: listing.currency || 'AED',
+            category: listing.category || 'car',
+            is_active: true, // Use is_active instead of status
+          };
+          
+          // Try location field variations - use location and emirate (NOT city)
+          if ((listing as any).city) {
+            simplePayload.location = (listing as any).city;
+            simplePayload.emirate = (listing as any).city;
+          } else if ((listing as any).location) {
+            simplePayload.location = (listing as any).location;
+            simplePayload.emirate = (listing as any).location;
+          }
+          
+          // Add condition if available
+          if ((listing as any).meta?.condition) {
+            simplePayload.condition = (listing as any).meta.condition;
+          }
+          
+          // Add images if available
+          if ((listing as any).media && Array.isArray((listing as any).media)) {
+            simplePayload.images = (listing as any).media;
+          }
+          
+          const { data: simpleData, error: simpleError } = await supabase
+            .from('marketplace_listings')
+            .insert([simplePayload])
+            .select()
+            .single();
+          
+          if (simpleError) {
+            throw simpleError;
+          }
+          
+          await fetchListings();
+          return { data: simpleData, error: null };
+        }
+        throw createError;
+      }
       
       // Log analytics event
       try {
