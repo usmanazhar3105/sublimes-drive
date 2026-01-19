@@ -34,13 +34,13 @@ function json(status: number, body: unknown, origin?: string | null) {
 }
 
 serve(async (req) => {
+  // Get origin for CORS headers
+  const origin = req.headers.get('origin') || '*';
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    const origin = req.headers.get('origin') || '*';
     return json(200, {}, origin);
   }
-
-  const origin = req.headers.get('origin') || '*';
 
   try {
     const authHeader = req.headers.get('Authorization') || '';
