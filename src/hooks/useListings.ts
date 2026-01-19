@@ -156,9 +156,27 @@ export function useListings(options: UseListingsOptions = {}) {
       // in the simpler schema, so we skip them to avoid column errors
       // They can be stored in a JSONB field if the schema supports it, but for now we skip
 
+      // ✅ FIX: Let Supabase infer columns from data - DO NOT pass columns parameter
+      // Build minimal payload with only fields that exist in the actual table
+      const insertPayload: Record<string, any> = {
+        [ownerCol]: user.id,
+        title: listing.title,
+        description: listing.description,
+        price: listing.price,
+        currency: listing.currency || 'AED',
+        category: listing.category,
+        status: 'pending',
+      };
+
+      // Only add optional fields if they exist in the listing data
+      if (dbPayload.location) insertPayload.location = dbPayload.location;
+      if (dbPayload.emirate) insertPayload.emirate = dbPayload.emirate;
+      if (dbPayload.condition) insertPayload.condition = dbPayload.condition;
+      if (dbPayload.images) insertPayload.images = dbPayload.images;
+
       const { data, error: createError } = await supabase
         .from('marketplace_listings')
-        .insert(dbPayload)
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -168,8 +186,8 @@ export function useListings(options: UseListingsOptions = {}) {
         if (createError.code === 'PGRST204' || createError.message?.includes('column')) {
           console.warn('Retrying with simpler payload (column mismatch)...');
           
-          // Try with minimal required fields only
-          const simplePayload: any = {
+          // ✅ FIX: Minimal payload - let Supabase infer columns, no explicit column list
+          const simplePayload: Record<string, any> = {
             [ownerCol]: user.id,
             title: listing.title,
             description: listing.description,
@@ -179,19 +197,17 @@ export function useListings(options: UseListingsOptions = {}) {
             status: 'pending',
           };
           
-          // Try location field variations - use location and emirate (NOT city)
+          // Only add optional fields if provided (don't add null/undefined)
           if ((listing as any).city) {
             simplePayload.location = (listing as any).city;
             simplePayload.emirate = (listing as any).city;
           }
           
-          // Add condition if available
           if ((listing as any).meta?.condition) {
             simplePayload.condition = (listing as any).meta.condition;
           }
           
-          // Add images if available
-          if ((listing as any).media) {
+          if ((listing as any).media && Array.isArray((listing as any).media) && (listing as any).media.length > 0) {
             simplePayload.images = (listing as any).media;
           }
           

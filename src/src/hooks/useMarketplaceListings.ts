@@ -254,21 +254,46 @@ export function useMarketplaceListings(options: UseMarketplaceListingsOptions = 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // ✅ FIX: Build clean payload - DO NOT spread listingData as it may contain invalid columns
+      // Only include fields that actually exist in the marketplace_listings table
+      // Let Supabase infer columns from payload, no explicit columns parameter
+      const insertPayload: Record<string, any> = {
+        user_id: user.id,
+        title: listingData.title,
+        description: listingData.description,
+        price: listingData.price,
+        currency: listingData.currency || 'AED',
+        status: 'pending',
+        listing_fee_paid: false,
+        is_boosted: false,
+        view_count: 0,
+        inquiry_count: 0,
+        favorite_count: 0,
+        is_verified: false,
+      };
+
+      // Only add optional fields if they exist and are provided
+      if (listingData.listing_type) insertPayload.listing_type = listingData.listing_type;
+      if (listingData.category) insertPayload.category = listingData.category;
+      if (listingData.location) insertPayload.location = listingData.location;
+      if (listingData.images && Array.isArray(listingData.images) && listingData.images.length > 0) {
+        insertPayload.images = listingData.images;
+      }
+      if (listingData.thumbnail_url) insertPayload.thumbnail_url = listingData.thumbnail_url;
+      if (listingData.brand) insertPayload.brand = listingData.brand;
+      if (listingData.car_brand) insertPayload.car_brand = listingData.car_brand;
+      if (listingData.car_model) insertPayload.car_model = listingData.car_model;
+      if (listingData.car_year) insertPayload.car_year = listingData.car_year;
+      if (listingData.car_mileage) insertPayload.car_mileage = listingData.car_mileage;
+      if (listingData.car_condition) insertPayload.car_condition = listingData.car_condition;
+      if (listingData.car_fuel_type) insertPayload.car_fuel_type = listingData.car_fuel_type;
+      if (listingData.car_transmission) insertPayload.car_transmission = listingData.car_transmission;
+      if (listingData.latitude) insertPayload.latitude = listingData.latitude;
+      if (listingData.longitude) insertPayload.longitude = listingData.longitude;
+
       const { data, error: insertError } = await supabase
         .from('marketplace_listings')
-        .insert([
-          {
-            ...listingData,
-            user_id: user.id,
-            status: 'pending',
-            listing_fee_paid: false,
-            is_boosted: false,
-            view_count: 0,
-            inquiry_count: 0,
-            favorite_count: 0,
-            is_verified: false,
-          }
-        ])
+        .insert(insertPayload)
         .select()
         .single();
 
