@@ -22,6 +22,7 @@ export function useWallet(userId?: string) {
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [topUpLoading, setTopUpLoading] = useState(false); // Separate loading state for top-up
 
   useEffect(() => {
     if (userId) {
@@ -103,16 +104,22 @@ export function useWallet(userId?: string) {
   };
 
   const topUpWallet = async (amount: number, paymentMethod: 'stripe' = 'stripe') => {
+    setTopUpLoading(true);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('Please sign in to top up wallet');
+        setTopUpLoading(false);
         return { error: 'Not authenticated' };
       }
 
       if (paymentMethod !== 'stripe') {
+        setTopUpLoading(false);
         return { error: 'Unsupported payment method' };
       }
+
+      console.log('Creating Stripe checkout session for amount:', amount);
 
       // Create Stripe checkout session via dedicated Edge Function
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -130,12 +137,21 @@ export function useWallet(userId?: string) {
 
       if (error) {
         console.error('Edge function error:', error);
-        throw error;
+        const errorMsg = error.message || 'Failed to create checkout session';
+        toast.error(errorMsg);
+        setTopUpLoading(false);
+        return { error };
       }
 
       if (!data) {
-        throw new Error('No response from payment server');
+        const errorMsg = 'No response from payment server';
+        console.error(errorMsg);
+        toast.error(errorMsg);
+        setTopUpLoading(false);
+        return { error: new Error(errorMsg) };
       }
+
+      console.log('Checkout session created:', data);
 
       // Handle response - edge function returns { url, session_id, order_id }
       const checkoutUrl = data.url;
@@ -143,7 +159,10 @@ export function useWallet(userId?: string) {
 
       if (checkoutUrl) {
         // Direct URL redirect (preferred - simpler and more reliable)
+        console.log('Redirecting to Stripe checkout:', checkoutUrl);
+        // Don't reset loading here - let the redirect happen
         window.location.href = checkoutUrl;
+        // Return immediately - page will redirect
         return { error: null };
       }
 
@@ -154,39 +173,57 @@ export function useWallet(userId?: string) {
           const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
           
           if (!publishableKey) {
-            throw new Error('Stripe publishable key not configured. Please set VITE_STRIPE_PUBLISHABLE_KEY in your environment variables.');
+            const errorMsg = 'Stripe publishable key not configured';
+            console.error(errorMsg);
+            toast.error(errorMsg);
+            setTopUpLoading(false);
+            return { error: new Error(errorMsg) };
           }
           
+          console.log('Loading Stripe.js...');
           const stripePromise = stripe.loadStripe(publishableKey);
           const stripeInstance = await stripePromise;
           
           if (!stripeInstance) {
-            throw new Error('Failed to initialize Stripe');
+            const errorMsg = 'Failed to initialize Stripe';
+            console.error(errorMsg);
+            toast.error(errorMsg);
+            setTopUpLoading(false);
+            return { error: new Error(errorMsg) };
           }
           
+          console.log('Redirecting to Stripe checkout with session:', sessionId);
           const { error: redirectError } = await stripeInstance.redirectToCheckout({ 
             sessionId: sessionId 
           });
           
           if (redirectError) {
             console.error('Stripe redirect error:', redirectError);
-            throw redirectError;
+            toast.error(redirectError.message || 'Failed to redirect to payment');
+            setTopUpLoading(false);
+            return { error: redirectError };
           }
           
+          // Don't reset loading here - redirect is happening
           return { error: null };
         } catch (stripeError: any) {
           console.error('Stripe redirect error:', stripeError);
-          toast.error('Failed to redirect to payment. Please try again.');
-          throw stripeError;
+          toast.error(stripeError.message || 'Failed to redirect to payment. Please try again.');
+          setTopUpLoading(false);
+          return { error: stripeError };
         }
       }
 
-      throw new Error('No checkout session URL or ID received from server');
-
-      return { error: null };
+      const errorMsg = 'No checkout session URL or ID received from server';
+      console.error(errorMsg, data);
+      toast.error(errorMsg);
+      setTopUpLoading(false);
+      return { error: new Error(errorMsg) };
     } catch (error: any) {
       console.error('Error topping up wallet:', error);
-      toast.error('Failed to initiate wallet top-up: ' + (error.message || 'Unknown error'));
+      const errorMsg = error?.message || 'Unknown error';
+      toast.error('Failed to initiate wallet top-up: ' + errorMsg);
+      setTopUpLoading(false);
       return { error };
     }
   };
@@ -194,7 +231,8 @@ export function useWallet(userId?: string) {
   return {
     balance,
     transactions,
-    loading,
+    loading: loading || topUpLoading, // Combine both loading states
+    topUpLoading, // Expose separate top-up loading state
     refetch: fetchWallet,
     topUpWallet,
   };

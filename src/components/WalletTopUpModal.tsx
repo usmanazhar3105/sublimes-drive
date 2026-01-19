@@ -14,7 +14,7 @@ interface WalletTopUpModalProps {
 
 export function WalletTopUpModal({ isOpen, onClose }: WalletTopUpModalProps) {
   const [amount, setAmount] = useState<string>('100');
-  const { topUpWallet, loading } = useWallet();
+  const { topUpWallet, topUpLoading } = useWallet();
 
   const presetAmounts = [50, 100, 200, 500, 1000];
 
@@ -30,9 +30,24 @@ export function WalletTopUpModal({ isOpen, onClose }: WalletTopUpModalProps) {
       return;
     }
 
-    const { error } = await topUpWallet(numAmount);
-    if (!error) {
-      onClose();
+    try {
+      const { error } = await topUpWallet(numAmount);
+      
+      if (error) {
+        // Error is already handled in topUpWallet with toast
+        console.error('Top-up error:', error);
+        // Don't close modal on error - let user try again
+        return;
+      }
+      
+      // If no error, redirect is happening - close modal after a short delay
+      // to allow redirect to start
+      setTimeout(() => {
+        onClose();
+      }, 500);
+    } catch (err: any) {
+      console.error('Unexpected error:', err);
+      toast.error(err?.message || 'An unexpected error occurred');
     }
   };
 
