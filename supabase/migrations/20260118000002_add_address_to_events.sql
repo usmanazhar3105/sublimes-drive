@@ -34,3 +34,4 @@ END $$;
 COMMENT ON COLUMN public.events.address IS 'Full address string for the event location (used for meetups)';
 
 
+

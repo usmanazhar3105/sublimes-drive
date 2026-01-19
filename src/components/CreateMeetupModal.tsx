@@ -124,7 +124,6 @@ export function CreateMeetupModal({ isOpen, onClose, onCreate }: CreateMeetupMod
         address: fullAddress, // New address field
         start_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now for instant meetups
         cover_image_url: coverUrl,
-        is_active: true,
       } as any);
 
       onCreate?.(created);

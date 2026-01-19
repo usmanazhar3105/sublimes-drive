@@ -109,9 +109,8 @@ export function useEvents(initial?: {
         start_time: (eventData as any).start_time ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Default to 1 hour from now
         end_time: (eventData as any).end_time ?? null,
         location_id: (eventData as any).location_id ?? null,
-        cover_image_url: (eventData as any).cover_image_url ?? null,
+        cover_image: (eventData as any).cover_image_url ?? (eventData as any).cover_image ?? null,
         is_featured: !!(eventData as any).is_featured,
-        is_active: (eventData as any).is_active ?? true,
       };
       const { data, error: err } = await (supabase as any)
         .from('events')
@@ -252,9 +251,8 @@ export function useCreateEvent() {
         start_time: (eventData as any).start_time ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Default to 1 hour from now
         end_time: (eventData as any).end_time ?? null,
         location_id: (eventData as any).location_id ?? null,
-        cover_image_url: (eventData as any).cover_image_url ?? null,
+        cover_image: (eventData as any).cover_image_url ?? (eventData as any).cover_image ?? null,
         is_featured: !!(eventData as any).is_featured,
-        is_active: (eventData as any).is_active ?? true,
       };
       const { data, error: createError } = await (supabase as any)
         .from('events')
