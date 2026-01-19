@@ -43,9 +43,24 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization') || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return json(401, { error: 'Unauthorized' }, origin);
+    const authHeader = req.headers.get('Authorization') || req.headers.get('x-client-authorization') || '';
+    
+    // Check if Authorization header is provided
+    if (!authHeader) {
+      return json(401, { 
+        error: 'Unauthorized',
+        message: 'Missing Authorization header. Please provide: Authorization: Bearer <your-access-token>'
+      }, origin);
+    }
+    
+    // Extract token (handle both "Bearer <token>" and just "<token>" formats)
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    
+    if (!token) {
+      return json(401, { 
+        error: 'Unauthorized',
+        message: 'Invalid Authorization header format. Use: Bearer <your-access-token>'
+      }, origin);
     }
 
     const payload = (await req.json().catch(() => ({}))) as CreateCheckoutPayload;
@@ -62,10 +77,15 @@ serve(async (req) => {
 
     // Auth client (validate user)
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !user) return json(401, { error: 'Unauthorized' }, origin);
+    if (userError || !user) {
+      return json(401, { 
+        error: 'Unauthorized',
+        message: userError?.message || 'Invalid or expired access token. Please sign in to get a valid token.'
+      }, origin);
+    }
 
     // Admin client (bypass RLS for billing writes)
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
