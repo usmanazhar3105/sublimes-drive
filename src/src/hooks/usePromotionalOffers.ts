@@ -42,10 +42,13 @@ export interface UserOffer {
   id: string;
   offer_id: string;
   user_id: string;
-  redemption_code: string;
+  code?: string; // Alias for redemption_code
+  redemption_code?: string;
   redeemed_at?: string;
-  expires_at: string;
+  expires_at?: string;
+  expiry_date?: string; // Alias
   created_at: string;
+  claimed_at?: string; // Alias for created_at
 }
 
 export function useOffers(filters?: { category?: string; active?: boolean }) {
@@ -61,18 +64,28 @@ export function useOffers(filters?: { category?: string; active?: boolean }) {
       // Build query - SIMPLIFIED without join to avoid RLS issues
       let query = supabase
         .from('offers')
-        .select('*')
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false });
+        .select('*');
 
-      // Apply filters
-      if (filters?.active !== undefined) {
-        query = query.eq('is_active', filters.active);
+      // Apply filters - only show active offers
+      if (filters?.active !== false) {
+        // Try is_active first, fallback to status
+        query = query.eq('is_active', true);
+        
+        // Also filter by valid_until date if column exists
+        const now = new Date().toISOString();
+        query = query.or(`valid_until.is.null,valid_until.gte.${now}`);
       }
+
+      // Filter by status if column exists (approved or active)
+      // This will be handled in the error fallback if column doesn't exist
 
       if (filters?.category && filters.category !== 'all') {
         query = query.eq('category', filters.category);
       }
+
+      // Order by featured first, then by creation date
+      query = query.order('is_featured', { ascending: false })
+                   .order('created_at', { ascending: false });
 
       const { data, error: fetchError } = await query;
 
@@ -80,9 +93,91 @@ export function useOffers(filters?: { category?: string; active?: boolean }) {
         console.error('⚠️ Error fetching offers:', fetchError);
         console.error('Error code:', fetchError.code);
         console.error('Error message:', fetchError.message);
-        console.error('Error details:', fetchError.details);
         
-        if (fetchError.code === '42P01') {
+        // If column error, try simpler query
+        if (fetchError.code === 'PGRST204' || fetchError.message?.includes('column')) {
+          console.warn('⚠️ Retrying with simpler query (column mismatch)...');
+          
+          // Retry without is_active filter, filter by status instead
+          let simpleQuery = supabase
+            .from('offers')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          // Try status filter
+          try {
+            simpleQuery = simpleQuery.eq('status', 'approved');
+          } catch {
+            // If status doesn't exist, try active
+            try {
+              simpleQuery = simpleQuery.eq('status', 'active');
+            } catch {
+              // If neither exists, just get all offers
+            }
+          }
+          
+          // Filter by valid_until if it exists
+          const now = new Date().toISOString();
+          try {
+            simpleQuery = simpleQuery.or(`valid_until.is.null,valid_until.gte.${now}`);
+          } catch {
+            // Column might not exist, continue
+          }
+          
+          if (filters?.category && filters.category !== 'all') {
+            simpleQuery = simpleQuery.eq('category', filters.category);
+          }
+          
+          const { data: simpleData, error: simpleError } = await simpleQuery;
+          
+          if (simpleError) {
+            // If still fails, try without any filters
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('offers')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(50);
+            
+            if (fallbackError) {
+              if (fallbackError.code === '42P01') {
+                console.warn('⚠️ Offers table not found yet');
+                setOffers([]);
+                setError(null);
+                setLoading(false);
+                return;
+              }
+              throw fallbackError;
+            }
+            
+            // Filter expired offers client-side
+            const activeOffers = (fallbackData || []).filter((offer: any) => {
+              if (offer.valid_until) {
+                return new Date(offer.valid_until) >= new Date();
+              }
+              return true;
+            });
+            
+            const transformedOffers = activeOffers.map((offer: any) => transformOffer(offer));
+            setOffers(transformedOffers);
+            setError(null);
+            setLoading(false);
+            return;
+          }
+          
+          // Filter expired offers client-side
+          const activeOffers = (simpleData || []).filter((offer: any) => {
+            if (offer.valid_until) {
+              return new Date(offer.valid_until) >= new Date();
+            }
+            return true;
+          });
+          
+          const transformedOffers = activeOffers.map((offer: any) => transformOffer(offer));
+          setOffers(transformedOffers);
+          setError(null);
+          setLoading(false);
+          return;
+        } else if (fetchError.code === '42P01') {
           console.warn('⚠️ Offers table not found yet');
           setOffers([]);
           setError(null);
@@ -91,18 +186,21 @@ export function useOffers(filters?: { category?: string; active?: boolean }) {
           throw fetchError;
         }
       } else if (data) {
+        // Filter expired offers client-side (in case valid_until filter didn't work)
+        const activeOffers = (data || []).filter((offer: any) => {
+          // Must be active
+          if (offer.is_active === false) return false;
+          
+          // Check valid_until date
+          if (offer.valid_until) {
+            return new Date(offer.valid_until) >= new Date();
+          }
+          
+          return true;
+        });
+        
         // Transform data to match interface
-        const transformedOffers: PromotionalOffer[] = data.map((offer: any) => ({
-          ...offer,
-          discount_percentage: offer.discount_percent, // Create alias
-          offer_price: offer.discounted_price, // Create alias for backward compatibility
-          redemptions_count: offer.redemption_count, // Create alias
-          provider_name: offer.provider_name || 'Unknown Vendor',
-          provider_verified: false,
-          claims_count: offer.redemption_count || 0,
-          max_claims: offer.max_redemptions || null,
-          currency: offer.currency || 'AED',
-        }));
+        const transformedOffers: PromotionalOffer[] = activeOffers.map((offer: any) => transformOffer(offer));
         setOffers(transformedOffers);
         setError(null);
       }
@@ -116,6 +214,24 @@ export function useOffers(filters?: { category?: string; active?: boolean }) {
     }
   };
 
+  // Helper function to transform offer data
+  function transformOffer(offer: any): PromotionalOffer {
+    return {
+      ...offer,
+      discount_percentage: offer.discount_percentage || offer.discount_percent || 0,
+      discount_percent: offer.discount_percent || offer.discount_percentage || 0,
+      offer_price: offer.discounted_price || offer.offer_price || 0,
+      redemptions_count: offer.redemption_count || offer.current_redemptions || offer.redemptions_count || 0,
+      provider_name: offer.provider_name || offer.vendor_name || 'Unknown Vendor',
+      provider_verified: offer.provider_verified || false,
+      claims_count: offer.redemption_count || offer.current_redemptions || offer.claims_count || 0,
+      max_claims: offer.max_redemptions || offer.max_claims || null,
+      currency: offer.currency || 'AED',
+      images: offer.images || (offer.image_url ? [offer.image_url] : []),
+      image_url: offer.image_url || (offer.images && offer.images[0]) || undefined,
+    };
+  }
+
   const fetchUserOffers = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -128,13 +244,32 @@ export function useOffers(filters?: { category?: string; active?: boolean }) {
       const { data, error: fetchError } = await supabase
         .from('offer_redemptions')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (fetchError) {
         console.warn('⚠️ Error fetching user offers:', fetchError);
+        // If table doesn't exist, return empty array
+        if (fetchError.code === '42P01') {
+          setUserOffers([]);
+          return;
+        }
         setUserOffers([]);
       } else {
-        setUserOffers(data || []);
+        // Transform to match UserOffer interface
+        const transformedUserOffers: UserOffer[] = (data || []).map((redemption: any) => ({
+          id: redemption.id,
+          offer_id: redemption.offer_id,
+          user_id: redemption.user_id,
+          code: redemption.code || redemption.redemption_code || '',
+          redemption_code: redemption.redemption_code || redemption.code || '',
+          redeemed_at: redemption.redeemed_at,
+          expires_at: redemption.expires_at || redemption.expiry_date || '',
+          expiry_date: redemption.expiry_date || redemption.expires_at || '',
+          created_at: redemption.created_at,
+          claimed_at: redemption.created_at, // Alias for created_at
+        }));
+        setUserOffers(transformedUserOffers);
       }
     } catch (err) {
       console.error('Error fetching user offers:', err);
@@ -183,8 +318,13 @@ export function useOffers(filters?: { category?: string; active?: boolean }) {
         return { data: null, error: insertError };
       }
 
-      // Increment redemption count
-      await supabase.rpc('increment_offer_redemptions', { offer_id: offerId });
+      // Increment redemption count (if RPC exists)
+      try {
+        await supabase.rpc('increment_offer_redemptions', { offer_id: offerId });
+      } catch (rpcError) {
+        // If RPC doesn't exist, manually update
+        console.warn('RPC increment_offer_redemptions not available, skipping');
+      }
 
       toast.success('Offer claimed successfully!');
       await fetchUserOffers();

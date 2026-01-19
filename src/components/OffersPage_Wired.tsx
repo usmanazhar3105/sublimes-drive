@@ -448,13 +448,18 @@ export function OffersPage({ onNavigate }: OffersPageProps) {
                         <div className="bg-[#1A2332] p-3 rounded-lg mb-4">
                           <p className="text-xs text-[#8B92A7] mb-1">Redemption Code</p>
                           <div className="flex items-center justify-between">
-                            <span className="text-lg text-[#D4AF37] font-mono">{userOffer.code}</span>
+                            <span className="text-lg text-[#D4AF37] font-mono">
+                              {userOffer.code || userOffer.redemption_code || 'N/A'}
+                            </span>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => {
-                                navigator.clipboard.writeText(userOffer.code);
-                                toast.success('Code copied!');
+                                const code = userOffer.code || userOffer.redemption_code || '';
+                                if (code) {
+                                  navigator.clipboard.writeText(code);
+                                  toast.success('Code copied!');
+                                }
                               }}
                             >
                               <Copy size={16} />
@@ -463,7 +468,7 @@ export function OffersPage({ onNavigate }: OffersPageProps) {
                         </div>
 
                         <div className="text-sm text-[#8B92A7] space-y-1 mb-4">
-                          <div>Claimed: {new Date(userOffer.claimed_at).toLocaleDateString()}</div>
+                          <div>Claimed: {new Date(userOffer.claimed_at || userOffer.created_at).toLocaleDateString()}</div>
                           {userOffer.redeemed_at && (
                             <div>Redeemed: {new Date(userOffer.redeemed_at).toLocaleDateString()}</div>
                           )}
