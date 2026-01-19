@@ -122,17 +122,94 @@ export function useListings(options: UseListingsOptions = {}) {
 
       const ownerCol = await getOwnerColumn();
 
+      // Map fields to correct database column names
+      const dbPayload: any = {
+        [ownerCol]: user.id,
+        title: listing.title,
+        description: listing.description,
+        price: listing.price,
+        currency: listing.currency || 'AED',
+        category: listing.category,
+        status: 'pending',
+      };
+
+      // Map location fields - use location and emirate (simpler schema)
+      // DO NOT use 'city' - it doesn't exist in the schema
+      if ((listing as any).city) {
+        dbPayload.location = (listing as any).city;
+        dbPayload.emirate = (listing as any).city;
+      }
+      
+      // Map condition
+      if ((listing as any).meta?.condition) {
+        dbPayload.condition = (listing as any).meta.condition;
+      }
+
+      // Map media/images - use images column (exists in simpler schema)
+      if ((listing as any).media && Array.isArray((listing as any).media)) {
+        dbPayload.images = (listing as any).media;
+      } else if ((listing as any).images) {
+        dbPayload.images = (listing as any).images;
+      }
+
+      // Note: brand, model, year, mileage, country, meta don't exist as direct columns
+      // in the simpler schema, so we skip them to avoid column errors
+      // They can be stored in a JSONB field if the schema supports it, but for now we skip
+
       const { data, error: createError } = await supabase
         .from('marketplace_listings')
-        .insert({
-          ...listing,
-          [ownerCol]: user.id,
-          status: 'pending',
-        })
+        .insert(dbPayload)
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Error creating listing:', createError);
+        // If error is about missing columns, try simpler payload
+        if (createError.code === 'PGRST204' || createError.message?.includes('column')) {
+          console.warn('Retrying with simpler payload (column mismatch)...');
+          
+          // Try with minimal required fields only
+          const simplePayload: any = {
+            [ownerCol]: user.id,
+            title: listing.title,
+            description: listing.description,
+            price: listing.price,
+            currency: listing.currency || 'AED',
+            category: listing.category,
+            status: 'pending',
+          };
+          
+          // Try location field variations - use location and emirate (NOT city)
+          if ((listing as any).city) {
+            simplePayload.location = (listing as any).city;
+            simplePayload.emirate = (listing as any).city;
+          }
+          
+          // Add condition if available
+          if ((listing as any).meta?.condition) {
+            simplePayload.condition = (listing as any).meta.condition;
+          }
+          
+          // Add images if available
+          if ((listing as any).media) {
+            simplePayload.images = (listing as any).media;
+          }
+          
+          const { data: simpleData, error: simpleError } = await supabase
+            .from('marketplace_listings')
+            .insert(simplePayload)
+            .select()
+            .single();
+          
+          if (simpleError) {
+            throw simpleError;
+          }
+          
+          setListings((prev) => [simpleData, ...prev]);
+          return simpleData;
+        }
+        throw createError;
+      }
 
       setListings((prev) => [data, ...prev]);
       return data;
