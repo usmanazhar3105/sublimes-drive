@@ -18,28 +18,30 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!;
 
-function json(status: number, body: unknown, origin?: string | null) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, x-client-authorization',
-    'Access-Control-Max-Age': '86400',
-  };
-  
+// CORS headers - Required for all responses
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // Allow all origins (or use specific domain in production)
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-client-authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+};
+
+function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
-    headers,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+    },
   });
 }
 
 serve(async (req) => {
-  // Get origin for CORS headers
-  const origin = req.headers.get('origin') || '*';
-  
-  // Handle CORS preflight requests
+  // ✅ Handle CORS preflight requests FIRST
   if (req.method === 'OPTIONS') {
-    return json(200, {}, origin);
+    return new Response('ok', {
+      headers: corsHeaders,
+    });
   }
 
   try {
@@ -50,7 +52,7 @@ serve(async (req) => {
       return json(401, { 
         error: 'Unauthorized',
         message: 'Missing Authorization header. Please provide: Authorization: Bearer <your-access-token>'
-      }, origin);
+      });
     }
     
     // Extract token (handle both "Bearer <token>" and just "<token>" formats)
@@ -60,7 +62,7 @@ serve(async (req) => {
       return json(401, { 
         error: 'Unauthorized',
         message: 'Invalid Authorization header format. Use: Bearer <your-access-token>'
-      }, origin);
+      });
     }
 
     const payload = (await req.json().catch(() => ({}))) as CreateCheckoutPayload;
@@ -72,8 +74,8 @@ serve(async (req) => {
     const cancelUrl = payload.cancel_url ? String(payload.cancel_url) : null;
     const metadata = payload.metadata ?? {};
 
-    if (!kind) return json(400, { error: 'kind is required' }, origin);
-    if (!successUrl || !cancelUrl) return json(400, { error: 'success_url and cancel_url are required' }, origin);
+    if (!kind) return json(400, { error: 'kind is required' });
+    if (!successUrl || !cancelUrl) return json(400, { error: 'success_url and cancel_url are required' });
 
     // Auth client (validate user)
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -84,7 +86,7 @@ serve(async (req) => {
       return json(401, { 
         error: 'Unauthorized',
         message: userError?.message || 'Invalid or expired access token. Please sign in to get a valid token.'
-      }, origin);
+      });
     }
 
     // Admin client (bypass RLS for billing writes)
@@ -118,10 +120,10 @@ serve(async (req) => {
     // Determine line items
     const usesDynamicAmount = ['wallet_credit', 'listing_fee', 'offer_purchase', 'parts'].includes(kind);
     if (!usesDynamicAmount && !priceId) {
-      return json(400, { error: 'price_id is required for this kind' }, origin);
+      return json(400, { error: 'price_id is required for this kind' });
     }
     if (usesDynamicAmount && (!amount || amount <= 0)) {
-      return json(400, { error: 'amount (minor units) is required for this kind' }, origin);
+      return json(400, { error: 'amount (minor units) is required for this kind' });
     }
 
     // Ensure wallet exists for wallet_credit (user wallets)
@@ -140,7 +142,7 @@ serve(async (req) => {
           .insert({ owner_type: 'user', owner_id: user.id, currency: 'AED', balance: 0 })
           .select('id')
           .single();
-        if (walletErr) return json(500, { error: walletErr.message }, origin);
+        if (walletErr) return json(500, { error: walletErr.message });
         walletId = (createdWallet as any).id;
       }
     }
@@ -166,7 +168,7 @@ serve(async (req) => {
       .insert(orderInsert)
       .select('id')
       .single();
-    if (orderErr || !order) return json(500, { error: orderErr?.message || 'Failed to create order' }, origin);
+    if (orderErr || !order) return json(500, { error: orderErr?.message || 'Failed to create order' });
 
     const sessionMetadata: Record<string, string> = {
       order_id: (order as any).id,
@@ -214,9 +216,9 @@ serve(async (req) => {
       .update({ stripe_checkout_session_id: session.id })
       .eq('id', (order as any).id);
 
-    return json(200, { url: session.url, session_id: session.id, order_id: (order as any).id }, origin);
+    return json(200, { url: session.url, session_id: session.id, order_id: (order as any).id });
   } catch (error) {
     console.error('Checkout error:', error);
-    return json(500, { error: (error as any)?.message || 'Checkout failed' }, origin);
+    return json(500, { error: (error as any)?.message || 'Checkout failed' });
   }
 });
