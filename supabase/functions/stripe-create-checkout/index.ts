@@ -18,29 +18,20 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!;
 
-// CORS headers - Required for all responses
+// 🔴 REQUIRED: CORS headers on EVERY response
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Allow all origins (or use specific domain in production)
+  'Access-Control-Allow-Origin': 'https://sublimes-drive-hoo.vercel.app', // Your frontend domain
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-client-authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
 };
 
-function json(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json',
-    },
-  });
-}
-
 serve(async (req) => {
-  // ✅ Handle CORS preflight requests FIRST
+  // 🔴 REQUIRED: Handle OPTIONS preflight FIRST
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: corsHeaders,
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
     });
   }
 
@@ -49,20 +40,38 @@ serve(async (req) => {
     
     // Check if Authorization header is provided
     if (!authHeader) {
-      return json(401, { 
-        error: 'Unauthorized',
-        message: 'Missing Authorization header. Please provide: Authorization: Bearer <your-access-token>'
-      });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Unauthorized',
+          message: 'Missing Authorization header. Please provide: Authorization: Bearer <your-access-token>'
+        }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
     
     // Extract token (handle both "Bearer <token>" and just "<token>" formats)
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
     
     if (!token) {
-      return json(401, { 
-        error: 'Unauthorized',
-        message: 'Invalid Authorization header format. Use: Bearer <your-access-token>'
-      });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Unauthorized',
+          message: 'Invalid Authorization header format. Use: Bearer <your-access-token>'
+        }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     const payload = (await req.json().catch(() => ({}))) as CreateCheckoutPayload;
@@ -74,8 +83,31 @@ serve(async (req) => {
     const cancelUrl = payload.cancel_url ? String(payload.cancel_url) : null;
     const metadata = payload.metadata ?? {};
 
-    if (!kind) return json(400, { error: 'kind is required' });
-    if (!successUrl || !cancelUrl) return json(400, { error: 'success_url and cancel_url are required' });
+    if (!kind) {
+      return new Response(
+        JSON.stringify({ error: 'kind is required' }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    
+    if (!successUrl || !cancelUrl) {
+      return new Response(
+        JSON.stringify({ error: 'success_url and cancel_url are required' }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
     // Auth client (validate user)
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -83,10 +115,19 @@ serve(async (req) => {
     });
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) {
-      return json(401, { 
-        error: 'Unauthorized',
-        message: userError?.message || 'Invalid or expired access token. Please sign in to get a valid token.'
-      });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Unauthorized',
+          message: userError?.message || 'Invalid or expired access token. Please sign in to get a valid token.'
+        }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     // Admin client (bypass RLS for billing writes)
@@ -120,10 +161,28 @@ serve(async (req) => {
     // Determine line items
     const usesDynamicAmount = ['wallet_credit', 'listing_fee', 'offer_purchase', 'parts'].includes(kind);
     if (!usesDynamicAmount && !priceId) {
-      return json(400, { error: 'price_id is required for this kind' });
+      return new Response(
+        JSON.stringify({ error: 'price_id is required for this kind' }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
     if (usesDynamicAmount && (!amount || amount <= 0)) {
-      return json(400, { error: 'amount (minor units) is required for this kind' });
+      return new Response(
+        JSON.stringify({ error: 'amount (minor units) is required for this kind' }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     // Ensure wallet exists for wallet_credit (user wallets)
@@ -142,7 +201,18 @@ serve(async (req) => {
           .insert({ owner_type: 'user', owner_id: user.id, currency: 'AED', balance: 0 })
           .select('id')
           .single();
-        if (walletErr) return json(500, { error: walletErr.message });
+        if (walletErr) {
+          return new Response(
+            JSON.stringify({ error: walletErr.message }),
+            {
+              status: 500,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        }
         walletId = (createdWallet as any).id;
       }
     }
@@ -168,7 +238,18 @@ serve(async (req) => {
       .insert(orderInsert)
       .select('id')
       .single();
-    if (orderErr || !order) return json(500, { error: orderErr?.message || 'Failed to create order' });
+    if (orderErr || !order) {
+      return new Response(
+        JSON.stringify({ error: orderErr?.message || 'Failed to create order' }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
     const sessionMetadata: Record<string, string> = {
       order_id: (order as any).id,
@@ -216,9 +297,27 @@ serve(async (req) => {
       .update({ stripe_checkout_session_id: session.id })
       .eq('id', (order as any).id);
 
-    return json(200, { url: session.url, session_id: session.id, order_id: (order as any).id });
+    return new Response(
+      JSON.stringify({ url: session.url, session_id: session.id, order_id: (order as any).id }),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   } catch (error) {
     console.error('Checkout error:', error);
-    return json(500, { error: (error as any)?.message || 'Checkout failed' });
+    return new Response(
+      JSON.stringify({ error: (error as any)?.message || 'Checkout failed' }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 });
