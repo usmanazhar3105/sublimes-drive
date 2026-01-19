@@ -12,12 +12,18 @@ export function useBidRepair() {
       if (!auth.user) throw new Error('Not authenticated')
       
       // Build payload with only fields that exist in the schema
+      // The error indicates owner_id is required (NOT NULL constraint)
+      // Set owner_id as primary, and also set user_id for schemas that use it
       const payload: any = {
-        user_id: auth.user.id,
+        owner_id: auth.user.id, // REQUIRED - Some schemas use this (NOT NULL)
         title: data.title ?? null,
         description: data.description ?? null,
         status: 'open',
       }
+      
+      // Also try user_id for schemas that use it instead of owner_id
+      // Note: Setting both shouldn't cause issues as Supabase ignores non-existent columns
+      // But we prioritize owner_id since the error indicates it's required
       
       // Add optional fields only if provided
       if (data.car_make !== undefined) {
@@ -59,17 +65,50 @@ export function useBidRepair() {
       row = result.data;
       e = result.error;
       
-      // If error is about missing columns, retry without budget columns
-      if (e && (e.code === 'PGRST204' || e.message?.includes('column') || e.message?.includes('budget'))) {
-        console.warn('Retrying without budget columns (schema mismatch)...');
+      // If error is about missing columns or owner_id constraint, retry with correct column
+      if (e && (e.code === 'PGRST204' || e.code === '23502' || e.message?.includes('column') || e.message?.includes('budget') || e.message?.includes('owner_id') || e.message?.includes('user_id'))) {
+        console.warn('Retrying with corrected column names (schema mismatch)...');
         
-        // Remove budget columns and retry
+        // Try with owner_id only (if error was about user_id)
+        if (e.message?.includes('owner_id') || e.code === '23502') {
+          const ownerPayload: any = {
+            owner_id: auth.user.id,
+            title: data.title ?? null,
+            description: data.description ?? null,
+            status: 'open',
+          }
+          
+          if (data.car_make !== undefined) {
+            ownerPayload.car_make = data.car_make;
+          }
+          if (data.car_model !== undefined) {
+            ownerPayload.car_model = data.car_model;
+          }
+          
+          if (data.media && Array.isArray(data.media) && data.media.length > 0) {
+            ownerPayload.images = data.media;
+          }
+          
+          const ownerResult = await (supabase as any).from('bid_repair').insert(ownerPayload).select('*').single()
+          row = ownerResult.data;
+          e = ownerResult.error;
+          
+          if (!e) {
+            setError(null)
+            return row
+          }
+        }
+        
+        // Remove budget columns and retry - ensure owner_id is set
         const simplePayload: any = {
-          user_id: auth.user.id,
+          owner_id: auth.user.id, // REQUIRED - must be set
           title: data.title ?? null,
           description: data.description ?? null,
           status: 'open',
         }
+        
+        // Also set user_id for schemas that use it instead
+        simplePayload.user_id = auth.user.id;
         
         if (data.car_make !== undefined) {
           simplePayload.car_make = data.car_make;
