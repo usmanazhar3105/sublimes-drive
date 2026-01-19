@@ -128,18 +128,60 @@ export function useWallet(userId?: string) {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
 
-      // Redirect to Stripe checkout
-      if (data?.session_id) {
-        const stripe = await import('@stripe/stripe-js');
-        const stripePromise = stripe.loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-        const stripeInstance = await stripePromise;
-        
-        if (stripeInstance) {
-          await stripeInstance.redirectToCheckout({ sessionId: data.session_id });
+      if (!data) {
+        throw new Error('No response from payment server');
+      }
+
+      // Handle response - edge function returns { url, session_id, order_id }
+      const checkoutUrl = data.url;
+      const sessionId = data.session_id || data.sessionId;
+
+      if (checkoutUrl) {
+        // Direct URL redirect (preferred - simpler and more reliable)
+        window.location.href = checkoutUrl;
+        return { error: null };
+      }
+
+      if (sessionId) {
+        // Fallback: Use Stripe.js to redirect if URL not provided
+        try {
+          const stripe = await import('@stripe/stripe-js');
+          const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+          
+          if (!publishableKey) {
+            throw new Error('Stripe publishable key not configured. Please set VITE_STRIPE_PUBLISHABLE_KEY in your environment variables.');
+          }
+          
+          const stripePromise = stripe.loadStripe(publishableKey);
+          const stripeInstance = await stripePromise;
+          
+          if (!stripeInstance) {
+            throw new Error('Failed to initialize Stripe');
+          }
+          
+          const { error: redirectError } = await stripeInstance.redirectToCheckout({ 
+            sessionId: sessionId 
+          });
+          
+          if (redirectError) {
+            console.error('Stripe redirect error:', redirectError);
+            throw redirectError;
+          }
+          
+          return { error: null };
+        } catch (stripeError: any) {
+          console.error('Stripe redirect error:', stripeError);
+          toast.error('Failed to redirect to payment. Please try again.');
+          throw stripeError;
         }
       }
+
+      throw new Error('No checkout session URL or ID received from server');
 
       return { error: null };
     } catch (error: any) {

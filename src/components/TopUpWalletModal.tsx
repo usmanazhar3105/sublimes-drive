@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
+import { useWallet } from '../hooks/useWallet';
+import { supabase } from '../utils/supabase/client';
 
 interface TopUpWalletModalProps {
   isOpen: boolean;
@@ -22,6 +24,7 @@ export function TopUpWalletModal({ isOpen, onClose, onNavigate }: TopUpWalletMod
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const { topUpWallet } = useWallet();
 
   const handlePresetSelect = (amount: number) => {
     setSelectedAmount(amount);
@@ -50,6 +53,11 @@ export function TopUpWalletModal({ isOpen, onClose, onNavigate }: TopUpWalletMod
       return;
     }
 
+    if (amount < 10) {
+      toast.error('Minimum top-up amount is AED 10');
+      return;
+    }
+
     if (amount > 10000) {
       toast.error('Maximum top-up amount is AED 10,000');
       return;
@@ -58,22 +66,22 @@ export function TopUpWalletModal({ isOpen, onClose, onNavigate }: TopUpWalletMod
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
-      toast.info('Processing payment...');
+      // Call the wallet top-up function which creates Stripe checkout session
+      const { error } = await topUpWallet(amount, 'stripe');
       
-      // Navigate to payment processing page
-      onNavigate('stripe-payment', {
-        amount: amount,
-        type: 'wallet-topup',
-        description: `Top up wallet with AED ${amount}`,
-        credits: amount
-      });
+      if (error) {
+        console.error('Payment error:', error);
+        toast.error(error || 'Payment failed. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
       
-      onClose();
-    } catch (error) {
+      // If successful, topUpWallet will redirect to Stripe checkout
+      // So we don't need to navigate or close the modal here
+      // The redirect happens automatically
+    } catch (error: any) {
       console.error('Payment error:', error);
-      toast.error('Payment failed. Please try again.');
-    } finally {
+      toast.error(error?.message || 'Payment failed. Please try again.');
       setIsProcessing(false);
     }
   };
