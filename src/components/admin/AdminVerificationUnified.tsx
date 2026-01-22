@@ -1,14 +1,14 @@
 /**
  * WiringDoc (auto)
- * Entities: [car_owner_verifications, garage_verifications, vendor_verifications]
- * Reads: public.car_owner_verifications, public.garage_verifications, public.vendor_verifications
- * Writes: fn.approve_verification, fn.reject_verification
- * RLS: admin_manage_*_verifications
+ * Entities: [verification_requests]
+ * Reads: public.verification_requests
+ * Writes: verification_requests, profiles
+ * RLS: admin_manage_verifications
  * Role UI: admin, editor
  * Stripe: n/a
  * AI Bot: n/a
  * Telemetry: view:admin_verification, action:approve_verification, action:reject_verification
- * Last Verified: 2025-10-31T00:00:00Z
+ * Last Verified: 2026-01-22T00:00:00Z
  */
 
 import { useState, useEffect } from 'react';
@@ -17,13 +17,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  FileText, 
-  User, 
-  Building2, 
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  FileText,
+  User,
+  Building2,
   Store,
   Eye,
   Download,
@@ -45,11 +45,13 @@ interface Verification {
   vehicle_registration?: string;
   vehicle_photos?: string[];
   ownership_proof?: string;
+  registration_number?: string;
   // Garage specific
   trade_license?: string;
   garage_photos?: string[];
   insurance_certificate?: string;
   business_name?: string;
+  business_address?: string;
   // Vendor specific
   business_registration?: string;
   tax_certificate?: string;
@@ -60,7 +62,12 @@ interface Verification {
     display_name: string;
     email: string;
     avatar_url?: string;
+    role?: string;
+    sub_role?: string;
   };
+  kind?: string;
+  verification_type?: string;
+  data?: any; // For flexible JSON data
 }
 
 export function AdminVerificationUnified() {
@@ -81,45 +88,95 @@ export function AdminVerificationUnified() {
   const fetchVerifications = async () => {
     setLoading(true);
     try {
-      const attachProfiles = async (rows: any[]) => {
-        const ids = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)));
-        if (ids.length === 0) return rows;
-        const { data: profs } = await supabase
-          .from('profiles')
-          .select('id, display_name, email, avatar_url')
-          .in('id', ids);
-        const map = new Map((profs || []).map((p: any) => [p.id, p]));
-        return rows.map(r => ({ ...r, profiles: map.get(r.user_id) }));
+      // 1. Fetch ALL Requests (simplest query)
+      const { data: requests, error } = await supabase
+        .from('verification_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // 2. Fetch Pending Profiles (Orphans) to ensure no one is missed
+      const { data: pendingProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('verification_status', 'pending');
+
+      // 3. Attach Profiles to requests
+      const userIds = new Set<string>();
+      requests?.forEach(r => userIds.add(r.user_id));
+      pendingProfiles?.forEach(p => userIds.add(p.id));
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, avatar_url, role, sub_role')
+        .in('id', Array.from(userIds));
+
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      // 4. Merge and process
+      let allItems: Verification[] = [];
+
+      // Add real requests
+      requests?.forEach(req => {
+        allItems.push({
+          ...req,
+          profiles: profileMap.get(req.user_id),
+          // Normalize fields from 'data' JSON if needed
+          business_name: req.business_name || req.data?.business_name,
+          registration_number: req.registration_number || req.data?.plateNumber,
+        });
+      });
+
+      // Add orphan profiles as synthetic requests only if they don't have a real request
+      const requestUserIds = new Set(requests?.map(r => r.user_id));
+
+      pendingProfiles?.forEach(p => {
+        if (!requestUserIds.has(p.id)) {
+          // Determine implied kind from sub_role or role
+          let impliedKind = 'car_owner'; // Default to car_owner for Subscribers or unknown
+
+          if (p.sub_role === 'garage_owner' || p.role === 'garage_owner') impliedKind = 'garage_owner';
+          else if (p.sub_role === 'vendor' || p.role === 'vendor') impliedKind = 'vendor';
+          // Explicitly check if they are ALREADY a car owner, otherwise they stay as default car_owner aspirant
+          else if (p.sub_role === 'car_owner' || p.role === 'car_owner') impliedKind = 'car_owner';
+
+          allItems.push({
+            id: `synthetic-${p.id}`,
+            user_id: p.id,
+            status: 'pending',
+            created_at: p.updated_at || p.created_at,
+            updated_at: p.updated_at || p.created_at,
+            kind: impliedKind,
+            verification_type: impliedKind === 'car_owner' ? 'vehicle' : 'business',
+            profiles: p
+          });
+        }
+      });
+
+      // 5. Filter for Current Tab
+      const filterForTab = (item: Verification) => {
+        // Check exact kind/type matches
+        if (activeTab === 'car_owner') {
+          return item.kind === 'car_owner' || item.verification_type === 'vehicle' || item.kind === 'vehicle';
+        }
+        if (activeTab === 'garage') {
+          return item.kind === 'garage_owner' || item.kind === 'garage' || item.verification_type === 'garage';
+        }
+        if (activeTab === 'vendor') {
+          return item.kind === 'vendor' || item.verification_type === 'vendor';
+        }
+        return false;
       };
 
-      if (activeTab === 'car_owner') {
-        const { data, error } = await supabase
-          .from('car_owner_verifications')
-          .select('*')
-          .order('created_at', { ascending: false });
+      const filtered = allItems.filter(filterForTab);
+      // Sort by date newest first
+      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        if (error) throw error;
-        const rows = await attachProfiles(data || []);
-        setCarOwnerVerifications(rows as any);
-      } else if (activeTab === 'garage') {
-        const { data, error } = await supabase
-          .from('garage_verifications')
-          .select('*')
-          .order('created_at', { ascending: false });
+      if (activeTab === 'car_owner') setCarOwnerVerifications(filtered);
+      else if (activeTab === 'garage') setGarageVerifications(filtered);
+      else if (activeTab === 'vendor') setVendorVerifications(filtered);
 
-        if (error) throw error;
-        const rows = await attachProfiles(data || []);
-        setGarageVerifications(rows as any);
-      } else if (activeTab === 'vendor') {
-        const { data, error } = await supabase
-          .from('vendor_verifications')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        const rows = await attachProfiles(data || []);
-        setVendorVerifications(rows as any);
-      }
     } catch (error: any) {
       console.error('Error fetching verifications:', error);
       toast.error('Failed to load verifications');
@@ -131,53 +188,48 @@ export function AdminVerificationUnified() {
   const handleApprove = async (verification: Verification) => {
     setLoading(true);
     try {
-      const table = activeTab === 'car_owner' 
-        ? 'car_owner_verifications'
-        : activeTab === 'garage'
-        ? 'garage_verifications'
-        : 'vendor_verifications';
+      const isSynthetic = verification.id.startsWith('synthetic-');
 
-      const { error } = await supabase
-        .from(table)
-        .update({
-          status: 'approved',
-          admin_notes: actionNotes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', verification.id);
+      // 1. Update request status (if real)
+      if (!isSynthetic) {
+        const { error } = await supabase
+          .from('verification_requests')
+          .update({
+            status: 'approved',
+            admin_notes: actionNotes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', verification.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
-      // Update user role if approved
-      if (activeTab === 'car_owner') {
+      // 2. Update user profile role
+      let newRole = '';
+      if (activeTab === 'car_owner') newRole = 'car_owner';
+      else if (activeTab === 'garage') newRole = 'garage_owner';
+      else if (activeTab === 'vendor') newRole = 'vendor';
+
+      if (newRole) {
         await supabase
           .from('profiles')
-          .update({ role: 'car_owner' })
-          .eq('id', verification.user_id);
-      } else if (activeTab === 'garage') {
-        await supabase
-          .from('profiles')
-          .update({ role: 'garage_owner' })
-          .eq('id', verification.user_id);
-      } else if (activeTab === 'vendor') {
-        await supabase
-          .from('profiles')
-          .update({ role: 'vendor' })
+          .update({
+            role: newRole,
+            sub_role: newRole,
+            verification_status: 'approved',
+            is_verified: true,
+            verified_at: new Date().toISOString()
+          })
           .eq('id', verification.user_id);
       }
 
-      // Log audit
-      await logAudit('approve_verification', table, verification.id, true);
-      await logAnalytics('action', 'approve_verification');
-
-      toast.success('Verification approved successfully');
+      await logAudit('approve_verification', 'verification_requests', verification.id, true);
+      toast.success('Approved successfully');
       setDetailsOpen(false);
-      setActionNotes('');
       fetchVerifications();
     } catch (error: any) {
-      console.error('Error approving verification:', error);
-      toast.error('Failed to approve verification');
-      await logAudit('approve_verification', 'verification', verification.id, false);
+      console.error('Error approving:', error);
+      toast.error('Failed to approve');
     } finally {
       setLoading(false);
     }
@@ -188,39 +240,35 @@ export function AdminVerificationUnified() {
       toast.error('Please provide a rejection reason');
       return;
     }
-
     setLoading(true);
     try {
-      const table = activeTab === 'car_owner' 
-        ? 'car_owner_verifications'
-        : activeTab === 'garage'
-        ? 'garage_verifications'
-        : 'vendor_verifications';
+      const isSynthetic = verification.id.startsWith('synthetic-');
 
-      const { error } = await supabase
-        .from(table)
-        .update({
-          status: 'rejected',
-          rejection_reason: actionNotes,
-          admin_notes: actionNotes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', verification.id);
+      if (!isSynthetic) {
+        const { error } = await supabase
+          .from('verification_requests')
+          .update({
+            status: 'rejected',
+            rejection_reason: actionNotes,
+            admin_notes: actionNotes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', verification.id);
+        if (error) throw error;
+      }
 
-      if (error) throw error;
+      await supabase
+        .from('profiles')
+        .update({ verification_status: 'rejected' })
+        .eq('id', verification.user_id);
 
-      // Log audit
-      await logAudit('reject_verification', table, verification.id, true);
-      await logAnalytics('action', 'reject_verification');
-
-      toast.success('Verification rejected');
+      await logAudit('reject_verification', 'verification_requests', verification.id, true);
+      toast.success('Rejected successfully');
       setDetailsOpen(false);
-      setActionNotes('');
       fetchVerifications();
     } catch (error: any) {
-      console.error('Error rejecting verification:', error);
-      toast.error('Failed to reject verification');
-      await logAudit('reject_verification', 'verification', verification.id, false);
+      console.error('Error rejecting:', error);
+      toast.error('Failed to reject');
     } finally {
       setLoading(false);
     }
@@ -230,48 +278,30 @@ export function AdminVerificationUnified() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       await supabase.from('audit_logs').insert({
-        user_id: user.id,
-        action,
-        entity,
-        entity_id: entityId,
-        success,
-        metadata: { notes: actionNotes },
-        created_at: new Date().toISOString()
+        user_id: user.id, action, entity, entity_id: entityId, success,
+        metadata: { notes: actionNotes }, created_at: new Date().toISOString()
       });
-    } catch (error) {
-      console.error('Error logging audit:', error);
-    }
+    } catch (e) { console.error('Audit log error', e); }
   };
 
   const logAnalytics = async (type: 'view' | 'action', event: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       await supabase.from('analytics_events').insert({
-        user_id: user.id,
-        event_type: type,
-        event_name: event,
-        metadata: { tab: activeTab },
-        created_at: new Date().toISOString()
+        user_id: user.id, event_type: type, event_name: event,
+        metadata: { tab: activeTab }, created_at: new Date().toISOString()
       });
-    } catch (error) {
-      console.error('Error logging analytics:', error);
-    }
+    } catch (e) { console.error('Analytics log error', e); }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
-      case 'approved':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-400"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
-      case 'rejected':
-        return <Badge variant="outline" className="bg-red-500/10 text-red-400"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
-      default:
-        return null;
+      case 'pending': return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+      case 'approved': return <Badge variant="outline" className="bg-green-500/10 text-green-400"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+      case 'rejected': return <Badge variant="outline" className="bg-red-500/10 text-red-400"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
+      default: return null;
     }
   };
 
@@ -282,58 +312,28 @@ export function AdminVerificationUnified() {
 
     return (
       <div className="space-y-6">
-        {/* Pending Section */}
         <div>
           <h3 className="text-lg mb-4 text-[#E8EAED]">Pending ({pending.length})</h3>
           <div className="space-y-3">
-            {pending.map(verification => (
-              <VerificationCard 
-                key={verification.id} 
-                verification={verification}
-                onClick={() => {
-                  setSelectedVerification(verification);
-                  setDetailsOpen(true);
-                }}
-              />
+            {pending.map(v => (
+              <VerificationCard key={v.id} verification={v} onClick={() => { setSelectedVerification(v); setDetailsOpen(true); }} />
             ))}
-            {pending.length === 0 && (
-              <div className="text-center py-8 text-gray-400">
-                No pending verifications
-              </div>
-            )}
+            {pending.length === 0 && <div className="text-center py-8 text-gray-400">No pending verifications</div>}
           </div>
         </div>
-
-        {/* Approved Section */}
         <div>
           <h3 className="text-lg mb-4 text-[#E8EAED]">Approved ({approved.length})</h3>
           <div className="space-y-3">
-            {approved.slice(0, 5).map(verification => (
-              <VerificationCard 
-                key={verification.id} 
-                verification={verification}
-                onClick={() => {
-                  setSelectedVerification(verification);
-                  setDetailsOpen(true);
-                }}
-              />
+            {approved.slice(0, 5).map(v => (
+              <VerificationCard key={v.id} verification={v} onClick={() => { setSelectedVerification(v); setDetailsOpen(true); }} />
             ))}
           </div>
         </div>
-
-        {/* Rejected Section */}
         <div>
           <h3 className="text-lg mb-4 text-[#E8EAED]">Rejected ({rejected.length})</h3>
           <div className="space-y-3">
-            {rejected.slice(0, 5).map(verification => (
-              <VerificationCard 
-                key={verification.id} 
-                verification={verification}
-                onClick={() => {
-                  setSelectedVerification(verification);
-                  setDetailsOpen(true);
-                }}
-              />
+            {rejected.slice(0, 5).map(v => (
+              <VerificationCard key={v.id} verification={v} onClick={() => { setSelectedVerification(v); setDetailsOpen(true); }} />
             ))}
           </div>
         </div>
@@ -342,32 +342,22 @@ export function AdminVerificationUnified() {
   };
 
   const VerificationCard = ({ verification, onClick }: { verification: Verification; onClick: () => void }) => (
-    <Card 
-      className="p-4 bg-[#1a1f2e] border-gray-700 hover:border-[#D4AF37] cursor-pointer transition-all"
-      onClick={onClick}
-    >
+    <Card className="p-4 bg-[#1a1f2e] border-gray-700 hover:border-[#D4AF37] cursor-pointer transition-all" onClick={onClick}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {verification.profiles?.avatar_url ? (
-            <img 
-              src={verification.profiles.avatar_url} 
-              alt={verification.profiles.display_name}
-              className="w-10 h-10 rounded-full"
-            />
+            <img src={verification.profiles.avatar_url} alt={verification.profiles.display_name} className="w-10 h-10 rounded-full" />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center">
-              <User className="w-5 h-5 text-[#D4AF37]" />
-            </div>
+            <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center"><User className="w-5 h-5 text-[#D4AF37]" /></div>
           )}
           <div>
             <div className="text-[#E8EAED]">{verification.profiles?.display_name || 'Unknown User'}</div>
             <div className="text-sm text-gray-400">{verification.profiles?.email}</div>
+            <div className="text-xs text-gray-500">ID: {verification.id.slice(0, 8)}...</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-400">
-            {new Date(verification.created_at).toLocaleDateString()}
-          </div>
+          <div className="text-sm text-gray-400">{new Date(verification.created_at).toLocaleDateString()}</div>
           {getStatusBadge(verification.status)}
           <Eye className="w-4 h-4 text-gray-400" />
         </div>
@@ -384,172 +374,130 @@ export function AdminVerificationUnified() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-[#1a1f2e] border border-gray-700">
-          <TabsTrigger value="car_owner" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black">
-            <User className="w-4 h-4 mr-2" />
-            Car Owner
-          </TabsTrigger>
-          <TabsTrigger value="garage" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black">
-            <Building2 className="w-4 h-4 mr-2" />
-            Garage Hub
-          </TabsTrigger>
-          <TabsTrigger value="vendor" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black">
-            <Store className="w-4 h-4 mr-2" />
-            Vendor Registration
-          </TabsTrigger>
+          <TabsTrigger value="car_owner" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"><User className="w-4 h-4 mr-2" />Car Owner</TabsTrigger>
+          <TabsTrigger value="garage" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"><Building2 className="w-4 h-4 mr-2" />Garage Hub</TabsTrigger>
+          <TabsTrigger value="vendor" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"><Store className="w-4 h-4 mr-2" />Vendor Registration</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="car_owner" className="mt-6">
-          {renderVerificationList(carOwnerVerifications)}
-        </TabsContent>
-
-        <TabsContent value="garage" className="mt-6">
-          {renderVerificationList(garageVerifications)}
-        </TabsContent>
-
-        <TabsContent value="vendor" className="mt-6">
-          {renderVerificationList(vendorVerifications)}
-        </TabsContent>
+        <TabsContent value="car_owner" className="mt-6">{renderVerificationList(carOwnerVerifications)}</TabsContent>
+        <TabsContent value="garage" className="mt-6">{renderVerificationList(garageVerifications)}</TabsContent>
+        <TabsContent value="vendor" className="mt-6">{renderVerificationList(vendorVerifications)}</TabsContent>
       </Tabs>
 
-      {/* Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="bg-[#1a1f2e] border-gray-700 text-[#E8EAED] max-w-2xl max-h-[80vh] overflow-y-auto">
           {selectedVerification && (
             <>
               <DialogHeader>
                 <DialogTitle>Verification Details</DialogTitle>
-                <DialogDescription className="text-gray-400">
-                  Review and take action on this verification request
-                </DialogDescription>
+                <DialogDescription className="text-gray-400">Review and take action</DialogDescription>
               </DialogHeader>
-
               <div className="space-y-6 mt-4">
-                {/* User Info */}
                 <div>
                   <h3 className="text-sm text-gray-400 mb-2">User Information</h3>
                   <div className="flex items-center gap-3 p-3 bg-[#0B1426] rounded-lg">
                     {selectedVerification.profiles?.avatar_url && (
-                      <img 
-                        src={selectedVerification.profiles.avatar_url} 
-                        alt={selectedVerification.profiles.display_name}
-                        className="w-12 h-12 rounded-full"
-                      />
+                      <img src={selectedVerification.profiles.avatar_url} alt="" className="w-12 h-12 rounded-full" />
                     )}
                     <div>
                       <div className="text-[#E8EAED]">{selectedVerification.profiles?.display_name}</div>
                       <div className="text-sm text-gray-400">{selectedVerification.profiles?.email}</div>
+                      <div className="text-xs text-gray-500">User ID: {selectedVerification.user_id}</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Documents */}
+                {/* Dynamic Documents Display */}
                 <div>
                   <h3 className="text-sm text-gray-400 mb-2">Documents</h3>
-                  <div className="space-y-2">
-                    {activeTab === 'car_owner' && (
-                      <>
-                        {selectedVerification.vehicle_registration && (
-                          <a href={selectedVerification.vehicle_registration} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-[#0B1426] rounded-lg hover:bg-[#1a1f2e]">
-                            <FileText className="w-4 h-4 text-[#D4AF37]" />
-                            <span>Vehicle Registration</span>
-                            <Download className="w-4 h-4 ml-auto" />
-                          </a>
-                        )}
-                        {selectedVerification.ownership_proof && (
-                          <a href={selectedVerification.ownership_proof} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-[#0B1426] rounded-lg hover:bg-[#1a1f2e]">
-                            <FileText className="w-4 h-4 text-[#D4AF37]" />
-                            <span>Ownership Proof</span>
-                            <Download className="w-4 h-4 ml-auto" />
-                          </a>
-                        )}
-                      </>
-                    )}
-                    {activeTab === 'garage' && (
-                      <>
-                        {selectedVerification.trade_license && (
-                          <a href={selectedVerification.trade_license} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-[#0B1426] rounded-lg hover:bg-[#1a1f2e]">
-                            <FileText className="w-4 h-4 text-[#D4AF37]" />
-                            <span>Trade License</span>
-                            <Download className="w-4 h-4 ml-auto" />
-                          </a>
-                        )}
-                        {selectedVerification.insurance_certificate && (
-                          <a href={selectedVerification.insurance_certificate} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-[#0B1426] rounded-lg hover:bg-[#1a1f2e]">
-                            <FileText className="w-4 h-4 text-[#D4AF37]" />
-                            <span>Insurance Certificate</span>
-                            <Download className="w-4 h-4 ml-auto" />
-                          </a>
-                        )}
-                      </>
-                    )}
-                    {activeTab === 'vendor' && (
-                      <>
-                        {selectedVerification.business_registration && (
-                          <a href={selectedVerification.business_registration} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-[#0B1426] rounded-lg hover:bg-[#1a1f2e]">
-                            <FileText className="w-4 h-4 text-[#D4AF37]" />
-                            <span>Business Registration</span>
-                            <Download className="w-4 h-4 ml-auto" />
-                          </a>
-                        )}
-                        {selectedVerification.tax_certificate && (
-                          <a href={selectedVerification.tax_certificate} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-[#0B1426] rounded-lg hover:bg-[#1a1f2e]">
-                            <FileText className="w-4 h-4 text-[#D4AF37]" />
-                            <span>Tax Certificate</span>
-                            <Download className="w-4 h-4 ml-auto" />
-                          </a>
-                        )}
-                      </>
-                    )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(() => {
+                      const docs = [];
+                      const data = selectedVerification.data || {};
+
+                      // Garage Documents
+                      if (data.trade_license_url || selectedVerification.trade_license) {
+                        docs.push({ label: 'Trade License', url: data.trade_license_url || selectedVerification.trade_license });
+                      }
+                      if (data.utility_bill_url) {
+                        docs.push({ label: 'Utility Bill', url: data.utility_bill_url });
+                      }
+
+                      // Car Owner Documents
+                      if (data.vehicle_registration_url || selectedVerification.vehicle_registration) {
+                        docs.push({ label: 'Vehicle Registration', url: data.vehicle_registration_url || selectedVerification.vehicle_registration });
+                      }
+                      if (data.ownership_proof_url || selectedVerification.ownership_proof) {
+                        docs.push({ label: 'Ownership Proof', url: data.ownership_proof_url || selectedVerification.ownership_proof });
+                      }
+
+                      // Vendor Documents
+                      if (data.trade_license_url && !docs.find(d => d.label === 'Trade License')) {
+                        docs.push({ label: 'Trade License', url: data.trade_license_url });
+                      }
+                      if (data.tax_certificate_url) {
+                        docs.push({ label: 'Tax Certificate', url: data.tax_certificate_url });
+                      }
+
+                      // Generic File URL fallback
+                      Object.keys(data).forEach(key => {
+                        if (key.endsWith('_url') && typeof data[key] === 'string' && data[key].startsWith('http')) {
+                          const label = key.replace(/_/g, ' ').replace(' url', '').replace(/\b\w/g, l => l.toUpperCase());
+                          if (!docs.find(d => d.url === data[key])) {
+                            docs.push({ label, url: data[key] });
+                          }
+                        }
+                      });
+
+                      if (docs.length === 0) return <p className="text-sm text-gray-500 italic">No documents attached.</p>;
+
+                      return docs.map((doc, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-[#0B1426] rounded-lg border border-gray-700">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <FileText className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
+                            <span className="text-sm text-[#E8EAED] truncate" title={doc.label}>{doc.label}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300"
+                            onClick={() => window.open(doc.url, '_blank')}
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span className="sr-only">View</span>
+                          </Button>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
 
-                {/* Admin Notes/Rejection Reason */}
-                {(selectedVerification.admin_notes || selectedVerification.rejection_reason) && (
-                  <div>
-                    <h3 className="text-sm text-gray-400 mb-2">Previous Notes</h3>
-                    <div className="p-3 bg-[#0B1426] rounded-lg text-sm">
-                      {selectedVerification.admin_notes || selectedVerification.rejection_reason}
+                {/* Raw Data (Folded) */}
+                <div className="space-y-2 mt-4">
+                  <details className="text-xs text-gray-500 cursor-pointer">
+                    <summary className="hover:text-gray-400 select-none">View Raw Request Data</summary>
+                    <div className="mt-2 p-3 bg-[#0B1426] rounded-lg font-mono overflow-auto max-h-40 text-xs">
+                      <pre>{JSON.stringify({
+                        kind: selectedVerification.kind,
+                        type: selectedVerification.verification_type,
+                        // ...selectedVerification
+                        data: selectedVerification.data
+                      }, null, 2)}</pre>
                     </div>
-                  </div>
-                )}
+                  </details>
+                </div>
 
-                {/* Action Notes */}
                 {selectedVerification.status === 'pending' && (
                   <div>
-                    <h3 className="text-sm text-gray-400 mb-2">
-                      <MessageSquare className="w-4 h-4 inline mr-1" />
-                      Notes (Required for rejection)
-                    </h3>
-                    <Textarea
-                      value={actionNotes}
-                      onChange={(e) => setActionNotes(e.target.value)}
-                      placeholder="Add notes or rejection reason..."
-                      className="bg-[#0B1426] border-gray-700 text-[#E8EAED]"
-                      rows={3}
-                    />
+                    <h3 className="text-sm text-gray-400 mb-2"><MessageSquare className="w-4 h-4 inline mr-1" />Notes</h3>
+                    <Textarea value={actionNotes} onChange={(e) => setActionNotes(e.target.value)} placeholder="Add notes or rejection reason..." className="bg-[#0B1426] border-gray-700 text-[#E8EAED]" rows={3} />
                   </div>
                 )}
 
-                {/* Actions */}
                 {selectedVerification.status === 'pending' && (
                   <div className="flex gap-3">
-                    <Button
-                      onClick={() => handleApprove(selectedVerification)}
-                      disabled={loading}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Approve
-                    </Button>
-                    <Button
-                      onClick={() => handleReject(selectedVerification)}
-                      disabled={loading}
-                      variant="destructive"
-                      className="flex-1"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Reject
-                    </Button>
+                    <Button onClick={() => handleApprove(selectedVerification)} disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700"><CheckCircle className="w-4 h-4 mr-2" />Approve</Button>
+                    <Button onClick={() => handleReject(selectedVerification)} disabled={loading} variant="destructive" className="flex-1"><XCircle className="w-4 h-4 mr-2" />Reject</Button>
                   </div>
                 )}
               </div>

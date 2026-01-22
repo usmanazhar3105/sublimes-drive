@@ -5,8 +5,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { 
-  Store, Upload, CheckCircle, Clock, XCircle, 
+import {
+  Store, Upload, CheckCircle, Clock, XCircle,
   AlertCircle, FileText, Phone, Mail, MapPin, Building2,
   ArrowLeft, Loader2
 } from 'lucide-react';
@@ -19,6 +19,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import { supabase } from '../../utils/supabase/client';
+import { STORAGE_BUCKETS } from '../../lib/storageBuckets';
 import { useProfile } from '../../src/hooks';
 
 const BUSINESS_TYPES = [
@@ -29,7 +30,7 @@ const BUSINESS_TYPES = [
 ];
 
 const EMIRATES = [
-  'Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 
+  'Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman',
   'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah'
 ];
 
@@ -118,13 +119,13 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
       const fileName = `${profile.id}/${field}_${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
-        .from('verification-documents')
+        .from(STORAGE_BUCKETS.verification)
         .upload(fileName, file);
 
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('verification-documents')
+        .from(STORAGE_BUCKETS.verification)
         .getPublicUrl(fileName);
 
       handleChange(field, publicUrl);
@@ -144,9 +145,9 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
     }
 
     // Validation
-    if (!formData.businessName || !formData.businessType || !formData.tradeLicenseNumber || 
-        !formData.emirate || !formData.businessPhone || !formData.businessEmail || 
-        !formData.businessAddress) {
+    if (!formData.businessName || !formData.businessType || !formData.tradeLicenseNumber ||
+      !formData.emirate || !formData.businessPhone || !formData.businessEmail ||
+      !formData.businessAddress) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -189,7 +190,7 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
       if (error) throw error;
 
       toast.success('Verification request submitted successfully! 🎉');
-      
+
       // Refresh status
       await checkExistingVerification();
     } catch (error: any) {

@@ -14,6 +14,7 @@ const DEFAULT_BUCKETS = {
   import: 'import-media',
   profile: 'profile-images',
   system: 'system-settings',
+  verification: 'verification-documents',
 } as const;
 
 export type BucketKey = keyof typeof DEFAULT_BUCKETS;
@@ -21,7 +22,7 @@ export type BucketKey = keyof typeof DEFAULT_BUCKETS;
 function getBucketName(key: BucketKey): string {
   const envKey = `VITE_BUCKET_${key.toUpperCase()}`;
   const envValue = import.meta.env[envKey] as string | undefined;
-  
+
   if (!envValue) {
     // Use default value, just log a warning in development
     if (import.meta.env.DEV) {
@@ -29,7 +30,7 @@ function getBucketName(key: BucketKey): string {
     }
     return DEFAULT_BUCKETS[key];
   }
-  
+
   return envValue;
 }
 
