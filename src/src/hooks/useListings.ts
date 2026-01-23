@@ -225,7 +225,52 @@ export function useListings(filters?: {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        // Enhanced error logging to help debug missing columns
+        console.error('Error creating listing:', {
+          error: createError,
+          message: createError.message,
+          code: createError.code,
+          details: createError.details,
+          hint: createError.hint,
+          payload: insertPayload,
+        });
+        
+        // If error is about missing column, try with minimal payload
+        if (createError.code === 'PGRST204' || createError.message?.includes('column') || createError.message?.includes('schema cache')) {
+          console.warn('Retrying with minimal payload (column mismatch detected)...');
+          
+          // Minimal payload with only essential fields
+          const minimalPayload: Record<string, any> = {
+            user_id: user.id,
+            title: listing.title,
+            description: listing.description || '',
+            price: listing.price,
+            currency: listing.currency || 'AED',
+          };
+          
+          // Only add fields that are most likely to exist
+          if (listing.category) minimalPayload.category = listing.category;
+          if (listing.media && Array.isArray(listing.media) && listing.media.length > 0) {
+            minimalPayload.images = listing.media;
+          }
+          
+          const { data: retryData, error: retryError } = await supabase
+            .from('marketplace_listings')
+            .insert(minimalPayload)
+            .select()
+            .single();
+          
+          if (retryError) {
+            console.error('Retry also failed:', retryError);
+            throw new Error(`Failed to create listing: ${retryError.message}. Please check database schema.`);
+          }
+          
+          return { data: retryData, error: null };
+        }
+        
+        throw createError;
+      }
       
       // Log analytics event
       try {
