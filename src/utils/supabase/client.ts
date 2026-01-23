@@ -235,3 +235,54 @@ export const dataService = {
   login: (credentials: { email: string; password: string }) =>
     authService.signIn(credentials.email, credentials.password),
 }
+
+// User service (auth required)
+export const userService = {
+  // Get all users (admin) or own user
+  getUsers: () => apiCall('/users', { method: 'GET' }),
+
+  // Get user by ID
+  getUser: (userId: string) => apiCall(`/users/${userId}`, { method: 'GET' }),
+
+  // Create user (usually handled by trigger, but available for manual creation)
+  createUser: (userData: { id?: string; email?: string; role?: string }) => 
+    apiCall('/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }),
+
+  // Update user (own or admin)
+  updateUser: (userId: string, updates: { email?: string; role?: string }) =>
+    apiCall(`/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+  // Delete user (admin only)
+  deleteUser: (userId: string) =>
+    apiCall(`/users/${userId}`, { method: 'DELETE' }),
+
+  // Get current user (from database)
+  getCurrentUser: async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { user: null };
+      
+      // Try to get from users table
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Error fetching user from database:', error);
+      }
+      
+      return { user: data || null };
+    } catch (err: any) {
+      console.error('Error getting current user:', err);
+      return { user: null };
+    }
+  },
+}

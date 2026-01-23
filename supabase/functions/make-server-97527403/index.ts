@@ -489,6 +489,193 @@ app.get('/functions/v1/make-server-97527403/health', (c) => c.json({ status: 'ok
 app.get('/make-server-97527403/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 app.get('/', (c) => c.json({ status: 'ok', root: true, timestamp: new Date().toISOString() }));
 
+// ============================================================================
+// USERS API ROUTES
+// ============================================================================
+
+// Get all users (admin only) or own user
+app.get('/users', async (c) => {
+  try {
+    const auth = await requireAuth(c);
+    if ('error' in auth) return c.json({ error: auth.error }, auth.status);
+    const { user } = auth as any;
+    
+    const isAdminUser = await isAdmin(user.id);
+    
+    if (isAdminUser) {
+      // Admin can see all users
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) return c.json({ error: error.message }, 400);
+      return c.json({ users: data || [] });
+    } else {
+      // Regular users can only see their own
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error) return c.json({ error: error.message }, 400);
+      return c.json({ user: data });
+    }
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Internal error' }, 500);
+  }
+});
+
+// Get user by ID
+app.get('/users/:id', async (c) => {
+  try {
+    const userId = c.req.param('id');
+    const auth = await requireAuth(c);
+    if ('error' in auth) return c.json({ error: auth.error }, auth.status);
+    const { user } = auth as any;
+    
+    // Users can only see their own, unless admin
+    const isAdminUser = await isAdmin(user.id);
+    if (!isAdminUser && user.id !== userId) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (error) return c.json({ error: error.message }, 400);
+    if (!data) return c.json({ error: 'User not found' }, 404);
+    
+    return c.json({ user: data });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Internal error' }, 500);
+  }
+});
+
+// Create user (usually handled by trigger, but available for manual creation)
+app.post('/users', async (c) => {
+  try {
+    const auth = await requireAuth(c);
+    if ('error' in auth) return c.json({ error: auth.error }, auth.status);
+    const { user } = auth as any;
+    const body = await c.req.json().catch(() => ({}));
+    
+    // Users can only create their own record
+    if (body.id && body.id !== user.id) {
+      return c.json({ error: 'You can only create your own user record' }, 403);
+    }
+    
+    const userData: Record<string, any> = {
+      id: body.id || user.id,
+      email: body.email || user.email,
+      role: body.role || 'user',
+      created_at: body.created_at || new Date().toISOString(),
+    };
+    
+    const { data, error } = await supabase
+      .from('users')
+      .insert(userData)
+      .select()
+      .single();
+    
+    if (error) {
+      // If user already exists, return existing
+      if (error.code === '23505') {
+        const { data: existing } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userData.id)
+          .maybeSingle();
+        return c.json({ user: existing, message: 'User already exists' });
+      }
+      return c.json({ error: error.message }, 400);
+    }
+    
+    return c.json({ user: data }, 201);
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Internal error' }, 500);
+  }
+});
+
+// Update user
+app.put('/users/:id', async (c) => {
+  try {
+    const userId = c.req.param('id');
+    const auth = await requireAuth(c);
+    if ('error' in auth) return c.json({ error: auth.error }, auth.status);
+    const { user } = auth as any;
+    
+    // Users can only update their own, unless admin
+    const isAdminUser = await isAdmin(user.id);
+    if (!isAdminUser && user.id !== userId) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+    
+    const body = await c.req.json().catch(() => ({}));
+    const allowed: Record<string, any> = {};
+    
+    // Regular users can only update email (not role)
+    if (isAdminUser) {
+      if (typeof body.email === 'string') allowed.email = body.email;
+      if (typeof body.role === 'string') allowed.role = body.role;
+    } else {
+      // Regular users can only update email
+      if (typeof body.email === 'string') allowed.email = body.email;
+    }
+    
+    if (Object.keys(allowed).length === 0) {
+      return c.json({ error: 'No updatable fields provided' }, 400);
+    }
+    
+    const { data, error } = await supabase
+      .from('users')
+      .update(allowed)
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) return c.json({ error: error.message }, 400);
+    if (!data) return c.json({ error: 'User not found' }, 404);
+    
+    return c.json({ user: data });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Internal error' }, 500);
+  }
+});
+
+// Delete user (admin only)
+app.delete('/users/:id', async (c) => {
+  try {
+    const userId = c.req.param('id');
+    const auth = await requireAuth(c);
+    if ('error' in auth) return c.json({ error: auth.error }, auth.status);
+    const { user } = auth as any;
+    
+    // Only admins can delete users
+    if (!(await isAdmin(user.id))) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+    
+    // Prevent self-deletion
+    if (user.id === userId) {
+      return c.json({ error: 'Cannot delete your own account' }, 400);
+    }
+    
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+    
+    if (error) return c.json({ error: error.message }, 400);
+    
+    return c.json({ success: true, message: 'User deleted' });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Internal error' }, 500);
+  }
+});
+
 // Generate signed upload URL (auth required). Client will use uploadToSignedUrl
 app.post('/storage/signed-upload', async (c) => {
   try {

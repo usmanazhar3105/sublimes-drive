@@ -13,26 +13,74 @@ type CreateCheckoutPayload = {
   metadata?: Record<string, string> | null;
 };
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!;
+// Environment variables with validation
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || Deno.env.get('PROJECT_URL') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('ANON_KEY') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY') || '';
+const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') || '';
 
-// 🔴 REQUIRED: CORS headers on EVERY response
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://sublimes-drive-hoo.vercel.app', // Your frontend domain
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-client-authorization',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400',
+// Validate required environment variables
+if (!SUPABASE_URL) {
+  console.error('❌ SUPABASE_URL is not set');
+}
+if (!SUPABASE_ANON_KEY) {
+  console.error('❌ SUPABASE_ANON_KEY is not set');
+}
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY is not set');
+}
+if (!STRIPE_SECRET_KEY) {
+  console.error('❌ STRIPE_SECRET_KEY is not set');
+}
+
+// CORS helper function - allows any origin for development, can be restricted in production
+const getCorsHeaders = (origin: string | null) => {
+  // Allow specific origins or use wildcard for development
+  const allowedOrigins = [
+    'https://sublimes-drive-hoo.vercel.app',
+    'https://app.sublimesdrive.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5174',
+  ];
+  
+  const allowOrigin = origin && allowedOrigins.includes(origin) 
+    ? origin 
+    : origin || '*'; // Fallback to * if no origin or not in list
+  
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-client-authorization',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Content-Type': 'application/json',
+  };
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // 🔴 REQUIRED: Handle OPTIONS preflight FIRST
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       status: 200,
       headers: corsHeaders 
     });
+  }
+
+  // Check if Stripe is configured
+  if (!STRIPE_SECRET_KEY) {
+    return new Response(
+      JSON.stringify({ 
+        error: 'Configuration Error',
+        message: 'Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.'
+      }),
+      {
+        status: 500,
+        headers: corsHeaders,
+      }
+    );
   }
 
   try {
@@ -47,10 +95,7 @@ serve(async (req) => {
         }),
         {
           status: 401,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -66,15 +111,35 @@ serve(async (req) => {
         }),
         {
           status: 401,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
 
-    const payload = (await req.json().catch(() => ({}))) as CreateCheckoutPayload;
+    // Parse request body with error handling
+    let payload: CreateCheckoutPayload;
+    try {
+      const bodyText = await req.text();
+      if (!bodyText) {
+        return new Response(
+          JSON.stringify({ error: 'Request body is required' }),
+          {
+            status: 400,
+            headers: corsHeaders,
+          }
+        );
+      }
+      payload = JSON.parse(bodyText) as CreateCheckoutPayload;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      );
+    }
     const kind = String(payload.kind || '').trim();
     const priceId = payload.price_id ? String(payload.price_id) : null;
     const amount = payload.amount ?? null;
@@ -88,10 +153,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'kind is required' }),
         {
           status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -101,10 +163,21 @@ serve(async (req) => {
         JSON.stringify({ error: 'success_url and cancel_url are required' }),
         {
           status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    // Validate Supabase URL
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Configuration Error',
+          message: 'Supabase configuration is missing'
+        }),
+        {
+          status: 500,
+          headers: corsHeaders,
         }
       );
     }
@@ -113,8 +186,10 @@ serve(async (req) => {
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
+    
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) {
+      console.error('Auth error:', userError);
       return new Response(
         JSON.stringify({ 
           error: 'Unauthorized',
@@ -122,39 +197,92 @@ serve(async (req) => {
         }),
         {
           status: 401,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
 
     // Admin client (bypass RLS for billing writes)
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Configuration Error',
+          message: 'Service role key is missing'
+        }),
+        {
+          status: 500,
+          headers: corsHeaders,
+        }
+      );
+    }
+    
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const stripe = new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
-    });
+    // Initialize Stripe with error handling
+    let stripe: Stripe;
+    try {
+      stripe = new Stripe(STRIPE_SECRET_KEY, {
+        apiVersion: '2023-10-16',
+        typescript: true,
+      });
+    } catch (stripeError) {
+      console.error('Stripe initialization error:', stripeError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Stripe Configuration Error',
+          message: 'Failed to initialize Stripe client'
+        }),
+        {
+          status: 500,
+          headers: corsHeaders,
+        }
+      );
+    }
 
     // Get or create Stripe customer
-    const { data: existingCustomer } = await supabaseAdmin
-      .from('billing_customers')
-      .select('stripe_customer_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    let customerId: string | undefined;
+    try {
+      const { data: existingCustomer, error: customerError } = await supabaseAdmin
+        .from('billing_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    let customerId = (existingCustomer as any)?.stripe_customer_id as string | undefined;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: { user_id: user.id },
-      });
-      customerId = customer.id;
-      await supabaseAdmin.from('billing_customers').upsert({
-        user_id: user.id,
-        stripe_customer_id: customerId,
-      });
+      if (customerError && customerError.code !== 'PGRST116') {
+        console.warn('Error fetching customer:', customerError);
+      }
+
+      customerId = (existingCustomer as any)?.stripe_customer_id as string | undefined;
+      
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email ?? undefined,
+          metadata: { user_id: user.id },
+        });
+        customerId = customer.id;
+        
+        const { error: upsertError } = await supabaseAdmin.from('billing_customers').upsert({
+          user_id: user.id,
+          stripe_customer_id: customerId,
+        });
+        
+        if (upsertError) {
+          console.warn('Error saving customer ID:', upsertError);
+          // Continue anyway - customer was created in Stripe
+        }
+      }
+    } catch (customerError: any) {
+      console.error('Customer creation error:', customerError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Customer Error',
+          message: customerError?.message || 'Failed to get or create Stripe customer'
+        }),
+        {
+          status: 500,
+          headers: corsHeaders,
+        }
+      );
     }
 
     // Determine line items
@@ -164,10 +292,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'price_id is required for this kind' }),
         {
           status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -176,10 +301,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'amount (minor units) is required for this kind' }),
         {
           status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -187,32 +309,44 @@ serve(async (req) => {
     // Ensure wallet exists for wallet_credit (user wallets)
     let walletId: string | null = null;
     if (kind === 'wallet_credit') {
-      const { data: wallet } = await supabaseAdmin
-        .from('billing_wallets')
-        .select('id')
-        .eq('owner_type', 'user')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-      walletId = (wallet as any)?.id ?? null;
-      if (!walletId) {
-        const { data: createdWallet, error: walletErr } = await supabaseAdmin
+      try {
+        const { data: wallet, error: walletFetchError } = await supabaseAdmin
           .from('billing_wallets')
-          .insert({ owner_type: 'user', owner_id: user.id, currency: 'AED', balance: 0 })
           .select('id')
-          .single();
-        if (walletErr) {
-          return new Response(
-            JSON.stringify({ error: walletErr.message }),
-            {
-              status: 500,
-              headers: {
-                ...corsHeaders,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
+          .eq('owner_type', 'user')
+          .eq('owner_id', user.id)
+          .maybeSingle();
+        
+        if (walletFetchError && walletFetchError.code !== 'PGRST116') {
+          console.warn('Error fetching wallet:', walletFetchError);
         }
-        walletId = (createdWallet as any).id;
+        
+        walletId = (wallet as any)?.id ?? null;
+        if (!walletId) {
+          const { data: createdWallet, error: walletErr } = await supabaseAdmin
+            .from('billing_wallets')
+            .insert({ owner_type: 'user', owner_id: user.id, currency: 'AED', balance: 0 })
+            .select('id')
+            .single();
+          
+          if (walletErr) {
+            console.error('Wallet creation error:', walletErr);
+            return new Response(
+              JSON.stringify({ 
+                error: 'Wallet Error',
+                message: walletErr.message || 'Failed to create wallet'
+              }),
+              {
+                status: 500,
+                headers: corsHeaders,
+              }
+            );
+          }
+          walletId = (createdWallet as any).id;
+        }
+      } catch (walletError: any) {
+        console.error('Wallet operation error:', walletError);
+        // Continue without wallet ID - not critical for checkout
       }
     }
 
@@ -232,20 +366,38 @@ serve(async (req) => {
       orderInsert.meta = { ...(metadata ?? {}), target_id: targetIdRaw };
     }
 
-    const { data: order, error: orderErr } = await supabaseAdmin
-      .from('orders')
-      .insert(orderInsert)
-      .select('id')
-      .single();
-    if (orderErr || !order) {
+    let order: any;
+    try {
+      const { data: orderData, error: orderErr } = await supabaseAdmin
+        .from('orders')
+        .insert(orderInsert)
+        .select('id')
+        .single();
+      
+      if (orderErr || !orderData) {
+        console.error('Order creation error:', orderErr);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Order Error',
+            message: orderErr?.message || 'Failed to create order'
+          }),
+          {
+            status: 500,
+            headers: corsHeaders,
+          }
+        );
+      }
+      order = orderData;
+    } catch (orderError: any) {
+      console.error('Order operation error:', orderError);
       return new Response(
-        JSON.stringify({ error: orderErr?.message || 'Failed to create order' }),
+        JSON.stringify({ 
+          error: 'Order Error',
+          message: orderError?.message || 'Failed to create order'
+        }),
         {
           status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
         }
       );
     }
@@ -280,42 +432,66 @@ serve(async (req) => {
         }]
       : [{ price: priceId!, quantity: 1 }];
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      line_items: lineItems as any,
-      mode: 'payment',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: sessionMetadata,
-    });
+    // Create checkout session with error handling
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        line_items: lineItems as any,
+        mode: 'payment',
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: sessionMetadata,
+        payment_method_types: ['card'],
+      });
+    } catch (stripeError: any) {
+      console.error('Stripe checkout session creation error:', stripeError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Stripe Error',
+          message: stripeError?.message || 'Failed to create checkout session',
+          details: stripeError?.type || 'unknown'
+        }),
+        {
+          status: 500,
+          headers: corsHeaders,
+        }
+      );
+    }
 
-    // Update order with session id
-    await supabaseAdmin
-      .from('orders')
-      .update({ stripe_checkout_session_id: session.id })
-      .eq('id', (order as any).id);
+    // Update order with session id (non-blocking)
+    try {
+      await supabaseAdmin
+        .from('orders')
+        .update({ stripe_checkout_session_id: session.id })
+        .eq('id', order.id);
+    } catch (updateError) {
+      console.warn('Failed to update order with session ID:', updateError);
+      // Continue anyway - order was created, session was created
+    }
 
     return new Response(
-      JSON.stringify({ url: session.url, session_id: session.id, order_id: (order as any).id }),
+      JSON.stringify({ 
+        url: session.url, 
+        session_id: session.id, 
+        order_id: order.id 
+      }),
       {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
       }
     );
-  } catch (error) {
-    console.error('Checkout error:', error);
+  } catch (error: any) {
+    console.error('Unexpected checkout error:', error);
     return new Response(
-      JSON.stringify({ error: (error as any)?.message || 'Checkout failed' }),
+      JSON.stringify({ 
+        error: 'Internal Server Error',
+        message: error?.message || 'Checkout failed',
+        type: error?.name || 'UnknownError'
+      }),
       {
         status: 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: getCorsHeaders(req.headers.get('origin')),
       }
     );
   }
