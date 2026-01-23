@@ -99,7 +99,7 @@ export function DailyChallengesPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-[#8A92A6]">Progress</span>
                 <span className={`${isCompleted ? 'text-[#D4AF37]' : 'text-[#E8EAED]'}`}>
-                  {challenge.progress} / {challenge.target_count}
+                  {challenge.progress} / {challenge.target_count || challenge.requirement_count || 1}
                 </span>
               </div>
               <Progress 
@@ -119,19 +119,21 @@ export function DailyChallengesPage() {
                 </div>
                 <div>
                   <p className="text-xs text-[#8A92A6]">XP Reward</p>
-                  <p className="text-[#E8EAED]">+{challenge.xp_reward}</p>
+                  <p className="text-[#E8EAED]">+{challenge.xp_reward || challenge.reward_xp || 0}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#D4AF37]/10 rounded">
-                  <Gift className="h-4 w-4 text-[#D4AF37]" />
+              {(challenge.coin_reward || challenge.coins_reward) && (
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-[#D4AF37]/10 rounded">
+                    <Gift className="h-4 w-4 text-[#D4AF37]" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#8A92A6]">Coins</p>
+                    <p className="text-[#E8EAED]">+{challenge.coin_reward || challenge.coins_reward || 0}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-[#8A92A6]">Coins</p>
-                  <p className="text-[#E8EAED]">+{challenge.coin_reward}</p>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Action Button */}
@@ -158,14 +160,14 @@ export function DailyChallengesPage() {
             {isClaimed && (
               <div className="flex items-center justify-center gap-2 text-[#8A92A6] text-sm p-3 bg-gray-500/5 rounded">
                 <CheckCircle className="h-4 w-4" />
-                <span>Reward claimed on {new Date(challenge.claimed_at).toLocaleDateString()}</span>
+                <span>Reward claimed{challenge.claimed_at ? ` on ${new Date(challenge.claimed_at).toLocaleDateString()}` : ''}</span>
               </div>
             )}
 
             {isActive && !isCompleted && (
               <div className="flex items-center justify-center gap-2 text-[#8A92A6] text-sm p-3 border border-[#2A3441] rounded">
                 <Clock className="h-4 w-4" />
-                <span>Keep going! {challenge.target_count - challenge.progress} more to go</span>
+                <span>Keep going! {(challenge.target_count || challenge.requirement_count || 1) - challenge.progress} more to go</span>
               </div>
             )}
           </CardContent>

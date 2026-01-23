@@ -24,3 +24,6 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_location_country 
 ON public.marketplace_listings(location_country);
 
+
+
+

@@ -148,3 +148,13 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ✅ Migration complete - Users table created with auto-creation trigger
 
+
+
+
+
+
+
+
+
+
+

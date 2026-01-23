@@ -25,3 +25,5 @@ END $$;
 -- The constraint allows: 'pending', 'active', 'sold' (and possibly more values)
 -- The code should only use these values
 
+
+

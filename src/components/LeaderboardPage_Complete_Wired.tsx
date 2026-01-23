@@ -59,6 +59,13 @@ interface UserRank {
   percentile: number;
 }
 
+interface LeaderboardStats {
+  total_users: number;
+  users_with_xp: number;
+  max_xp: number;
+  avg_xp: number;
+}
+
 type CategoryType = 'overall' | 'posts' | 'events' | 'marketplace' | 'community';
 type PeriodType = 'alltime' | 'weekly' | 'monthly';
 
@@ -68,6 +75,7 @@ export function LeaderboardPage_Complete_Wired() {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('alltime');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userRank, setUserRank] = useState<UserRank | null>(null);
+  const [stats, setStats] = useState<LeaderboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Get current user
@@ -99,6 +107,7 @@ export function LeaderboardPage_Complete_Wired() {
   // Fetch leaderboard data
   useEffect(() => {
     fetchLeaderboard();
+    fetchStats();
     if (user) {
       fetchUserRank();
     }
@@ -107,27 +116,89 @@ export function LeaderboardPage_Complete_Wired() {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      // Analytics RPC disabled - functions not deployed in Supabase
-
       // Determine view name based on category
       const viewName = `leaderboard_${selectedCategory}`;
       
-      // Fetch from view
-      const { data, error } = await supabase
+      // Try fetching from view first
+      const { data: viewData, error: viewError } = await supabase
         .from(viewName)
         .select('*')
         .limit(100);
 
-      if (error) {
-        // Permission denied or view missing: show empty silently
-        if ((error as any).code === '42501') {
-          setLeaderboard([]);
-          return;
-        }
-        throw error;
+      if (!viewError && viewData) {
+        // Successfully fetched from view
+        setLeaderboard(viewData || []);
+        setLoading(false);
+        return;
       }
 
-      setLeaderboard(data || []);
+      // Fallback to profiles table if view doesn't exist
+      console.debug('View not found, falling back to profiles table');
+      
+      // Check which XP column exists
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, avatar_url, role, xp_points, xp, total_xp')
+        .order('xp_points', { ascending: false })
+        .limit(100);
+
+      if (profilesError) {
+        // Try with xp column
+        const { data: xpData, error: xpError } = await supabase
+          .from('profiles')
+          .select('id, display_name, email, avatar_url, role, xp')
+          .order('xp', { ascending: false })
+          .limit(100);
+
+        if (xpError) {
+          // Try with total_xp column
+          const { data: totalXpData, error: totalXpError } = await supabase
+            .from('profiles')
+            .select('id, display_name, email, avatar_url, role, total_xp')
+            .order('total_xp', { ascending: false })
+            .limit(100);
+
+          if (totalXpError) {
+            throw totalXpError;
+          }
+
+          // Map profiles with total_xp
+          const mappedData = (totalXpData || []).map((p, index) => ({
+            user_id: p.id,
+            display_name: p.display_name || p.email?.split('@')[0] || 'User',
+            avatar: p.avatar_url,
+            score: p.total_xp || 0,
+            rank: index + 1,
+            role: p.role,
+            total_xp: p.total_xp || 0,
+          }));
+          setLeaderboard(mappedData);
+        } else {
+          // Map profiles with xp
+          const mappedData = (xpData || []).map((p, index) => ({
+            user_id: p.id,
+            display_name: p.display_name || p.email?.split('@')[0] || 'User',
+            avatar: p.avatar_url,
+            score: p.xp || 0,
+            rank: index + 1,
+            role: p.role,
+            total_xp: p.xp || 0,
+          }));
+          setLeaderboard(mappedData);
+        }
+      } else {
+        // Map profiles with xp_points
+        const mappedData = (profilesData || []).map((p, index) => ({
+          user_id: p.id,
+          display_name: p.display_name || p.email?.split('@')[0] || 'User',
+          avatar: p.avatar_url,
+          score: p.xp_points || 0,
+          rank: index + 1,
+          role: p.role,
+          total_xp: p.xp_points || 0,
+        }));
+        setLeaderboard(mappedData);
+      }
     } catch (error: any) {
       const code: string | undefined = error?.code;
       const msg: string = error?.message || '';
@@ -135,7 +206,7 @@ export function LeaderboardPage_Complete_Wired() {
       if (code === 'PGRST205' || code === '42P01' || code === '42703' || msg.includes('relation') || msg.includes('does not exist')) {
         setLeaderboard([]);
       } else {
-        console.debug('Leaderboard fetch fallback:', error);
+        console.debug('Leaderboard fetch error:', error);
         setLeaderboard([]);
       }
     } finally {
@@ -143,10 +214,47 @@ export function LeaderboardPage_Complete_Wired() {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      // Fetch all profiles to calculate statistics
+      const { data: profilesData, error } = await supabase
+        .from('profiles')
+        .select('xp_points, xp, total_xp');
+
+      if (error) {
+        console.debug('Error fetching stats:', error);
+        return;
+      }
+
+      // Determine which XP column to use
+      const profiles = profilesData || [];
+      const xpValues = profiles
+        .map(p => p.xp_points ?? p.xp ?? p.total_xp ?? 0)
+        .filter(xp => xp > 0);
+
+      const totalUsers = profiles.length;
+      const usersWithXp = xpValues.length;
+      const maxXp = xpValues.length > 0 ? Math.max(...xpValues) : 0;
+      const avgXp = xpValues.length > 0 
+        ? Math.round((xpValues.reduce((sum, xp) => sum + xp, 0) / xpValues.length) * 100) / 100
+        : 0;
+
+      setStats({
+        total_users: totalUsers,
+        users_with_xp: usersWithXp,
+        max_xp: maxXp,
+        avg_xp: avgXp,
+      });
+    } catch (error) {
+      console.debug('Error fetching leaderboard stats:', error);
+    }
+  };
+
   const fetchUserRank = async () => {
     if (!user) return;
     
     try {
+      // Try RPC function first
       const { data, error } = await supabase
         .rpc('get_user_rank', {
           user_id_param: user.id,
@@ -154,16 +262,49 @@ export function LeaderboardPage_Complete_Wired() {
           period_param: selectedPeriod
         });
 
-      if (error) {
-        // PGRST116: 0 rows → no rank yet, not an error
-        if ((error as any).code === 'PGRST116') {
-          setUserRank(null);
-          return;
-        }
-        throw error;
+      if (!error && data && Array.isArray(data) && data.length > 0) {
+        setUserRank(data[0] || null);
+        return;
       }
-      const rows = (data as any[]) || [];
-      setUserRank(rows[0] || null);
+
+      // Fallback: Calculate rank from profiles table
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('xp_points, xp, total_xp')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        setUserRank(null);
+        return;
+      }
+
+      const userXp = userProfile?.xp_points ?? userProfile?.xp ?? userProfile?.total_xp ?? 0;
+
+      // Get all profiles to calculate rank
+      const { data: allProfiles, error: allError } = await supabase
+        .from('profiles')
+        .select('xp_points, xp, total_xp');
+
+      if (allError) {
+        setUserRank(null);
+        return;
+      }
+
+      const allXpValues = (allProfiles || [])
+        .map(p => p.xp_points ?? p.xp ?? p.total_xp ?? 0)
+        .sort((a, b) => b - a);
+
+      const rank = allXpValues.findIndex(xp => xp <= userXp) + 1 || allXpValues.length + 1;
+      const totalUsers = allXpValues.length;
+      const percentile = totalUsers > 0 ? Math.round(((totalUsers - rank) / totalUsers) * 100) : 0;
+
+      setUserRank({
+        rank,
+        score: userXp,
+        total_users: totalUsers,
+        percentile,
+      });
     } catch (error: any) {
       const code: string | undefined = error?.code;
       const msg: string = error?.message || '';
@@ -410,6 +551,46 @@ export function LeaderboardPage_Complete_Wired() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Statistics Card */}
+            {stats && (
+              <Card className="bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/5 border-[#D4AF37]/30">
+                <CardHeader>
+                  <CardTitle className="text-[#E8EAED] flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-[#D4AF37]" />
+                    Leaderboard Stats
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-[#0B1426]/50 border border-[#E8EAED]/10">
+                      <p className="text-xs text-[#E8EAED]/60 mb-1">Total Users</p>
+                      <p className="text-2xl font-bold text-[#D4AF37]">
+                        {stats.total_users.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-[#0B1426]/50 border border-[#E8EAED]/10">
+                      <p className="text-xs text-[#E8EAED]/60 mb-1">Users with XP</p>
+                      <p className="text-2xl font-bold text-[#D4AF37]">
+                        {stats.users_with_xp.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-[#0B1426]/50 border border-[#E8EAED]/10">
+                      <p className="text-xs text-[#E8EAED]/60 mb-1">Max XP</p>
+                      <p className="text-2xl font-bold text-[#D4AF37]">
+                        {stats.max_xp.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-[#0B1426]/50 border border-[#E8EAED]/10">
+                      <p className="text-xs text-[#E8EAED]/60 mb-1">Avg XP</p>
+                      <p className="text-2xl font-bold text-[#D4AF37]">
+                        {stats.avg_xp.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Your Rank Card */}
             {user && userRank && (
               <Card className="bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/5 border-[#D4AF37]/30">

@@ -82,3 +82,5 @@ CREATE POLICY "garages_delete" ON public.garages
 --   AND tablename = 'garages'
 -- ORDER BY policyname;
 
+
+
