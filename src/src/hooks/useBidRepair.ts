@@ -5,11 +5,29 @@ export function useBidRepair() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createBidRequest = async (data: { title?: string; description?: string; car_make?: string; car_model?: string; budget_min?: number; budget_max?: number; location_id?: string; media?: string[] }) => {
+  const createBidRequest = async (data: { title?: string; description?: string; car_make?: string; car_model?: string; budget_min?: number; budget_max?: number; location_id?: string; media?: string[]; vehicle_info?: string | Record<string, any> }) => {
     try {
       setLoading(true)
       const { data: auth } = await supabase.auth.getUser()
       if (!auth.user) throw new Error('Not authenticated')
+      
+      // Build vehicle_info as JSONB - REQUIRED field (NOT NULL)
+      // If vehicle_info is a string, convert it to a simple JSONB object
+      // If it's already an object, use it as-is
+      // Default to empty object if not provided
+      let vehicleInfoJson: Record<string, any> = {};
+      if (data.vehicle_info) {
+        if (typeof data.vehicle_info === 'string') {
+          // Parse string like "2020 Toyota Camry" into JSONB structure
+          // Try to extract make/model/year if possible, otherwise use as description
+          vehicleInfoJson = {
+            description: data.vehicle_info,
+            display: data.vehicle_info,
+          };
+        } else {
+          vehicleInfoJson = data.vehicle_info;
+        }
+      }
       
       // Build payload with only fields that exist in the schema
       // The error indicates owner_id is required (NOT NULL constraint)
@@ -18,6 +36,7 @@ export function useBidRepair() {
         owner_id: auth.user.id, // REQUIRED - Some schemas use this (NOT NULL)
         title: data.title ?? null,
         description: data.description ?? null,
+        vehicle_info: vehicleInfoJson, // REQUIRED - JSONB NOT NULL
         status: 'open',
       }
       
@@ -70,11 +89,12 @@ export function useBidRepair() {
         console.warn('Retrying with corrected column names (schema mismatch)...');
         
         // Try with owner_id only (if error was about user_id)
-        if (e.message?.includes('owner_id') || e.code === '23502') {
+        if (e.message?.includes('owner_id') || e.code === '23502' || e.message?.includes('vehicle_info')) {
           const ownerPayload: any = {
             owner_id: auth.user.id,
             title: data.title ?? null,
             description: data.description ?? null,
+            vehicle_info: vehicleInfoJson, // REQUIRED - JSONB NOT NULL
             status: 'open',
           }
           
@@ -104,6 +124,7 @@ export function useBidRepair() {
           owner_id: auth.user.id, // REQUIRED - must be set
           title: data.title ?? null,
           description: data.description ?? null,
+          vehicle_info: vehicleInfoJson, // REQUIRED - JSONB NOT NULL
           status: 'open',
         }
         

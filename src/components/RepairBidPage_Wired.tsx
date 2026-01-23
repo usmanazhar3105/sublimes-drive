@@ -89,6 +89,7 @@ export function RepairBidPage({ onNavigate: _onNavigate }: RepairBidPageProps) {
       await createBidRequest({
         title: formData.vehicle_info,
         description: formData.issue_description,
+        vehicle_info: formData.vehicle_info, // Pass as string, will be converted to JSONB in hook
         media: urls,
       });
 
