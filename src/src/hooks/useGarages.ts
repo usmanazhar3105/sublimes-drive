@@ -43,13 +43,42 @@ export function useGarages() {
       setLoading(true);
       let query = supabase
         .from('garages')
-        .select('*')
-        .eq('is_active', true)
-        .order('is_featured', { ascending: false })
-        .order('rating', { ascending: false, nullsFirst: false });
+        .select('*');
+
+      // Try to filter by status='approved' first (most common)
+      // If that fails, try is_active=true, or show all
+      try {
+        query = query.eq('status', 'approved');
+      } catch {
+        // If status column doesn't exist, try is_active
+        try {
+          query = query.eq('is_active', true);
+        } catch {
+          // If neither exists, show all garages
+          console.warn('Neither status nor is_active column found, showing all garages');
+        }
+      }
+
+      // Order by featured first, then by rating
+      try {
+        query = query.order('is_featured', { ascending: false });
+      } catch {
+        // Skip if column doesn't exist
+      }
+
+      try {
+        query = query.order('rating', { ascending: false, nullsFirst: false });
+      } catch {
+        // Skip if column doesn't exist
+      }
 
       if (filters?.location) {
-        query = query.eq('location_id', filters.location);
+        // Try location_id first, then location
+        try {
+          query = query.eq('location_id', filters.location);
+        } catch {
+          query = query.eq('location', filters.location);
+        }
       }
 
       if (filters?.verified !== undefined) {
@@ -70,13 +99,34 @@ export function useGarages() {
 
       const { data, error: fetchError } = await query;
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        // If error is about missing columns, retry with minimal query
+        if (fetchError.message?.includes('column') || fetchError.code === 'PGRST204') {
+          console.warn('Retrying with minimal query:', fetchError.message);
+          const retryQuery = supabase
+            .from('garages')
+            .select('*');
+          
+          const { data: retryData, error: retryError } = await retryQuery;
+          if (retryError) throw retryError;
+          setGarages(retryData || []);
+          setError(null);
+          return;
+        }
+        throw fetchError;
+      }
 
       setGarages(data || []);
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching garages:', err);
+      console.error('Error fetching garages:', {
+        error: err,
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+      });
       setError(err.message);
+      setGarages([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

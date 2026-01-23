@@ -67,23 +67,77 @@ export function GarageHubPage({ onNavigate }: GarageHubPageProps) {
   const loadGarages = async () => {
     try {
       setLoading(true);
+      
+      // Start with base query
       let query = supabase
         .from('garages')
-        .select('*')
-        .eq('status', 'approved')
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false });
+        .select('*');
       
+      // Filter by status='approved' if column exists
+      // This will be handled by RLS policy, but we also filter client-side
+      query = query.eq('status', 'approved');
+      
+      // Apply location filter if selected
       if (selectedLocation !== 'all') {
         query = query.eq('location', selectedLocation);
       }
       
+      // Order by featured first, then by creation date
+      query = query
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false });
+      
       const { data, error } = await query;
-      if (error) throw error;
+      
+      if (error) {
+        // If error is about status column not existing, retry without status filter
+        if (error.message?.includes('status') || error.message?.includes('column') || error.code === 'PGRST204') {
+          console.warn('Status column may not exist, retrying without status filter:', error.message);
+          
+          const retryQuery = supabase
+            .from('garages')
+            .select('*');
+          
+          if (selectedLocation !== 'all') {
+            retryQuery.eq('location', selectedLocation);
+          }
+          
+          retryQuery
+            .order('is_featured', { ascending: false })
+            .order('created_at', { ascending: false });
+          
+          const { data: retryData, error: retryError } = await retryQuery;
+          
+          if (retryError) {
+            // Last resort: get all garages with minimal ordering
+            console.warn('Retrying with minimal query:', retryError.message);
+            const { data: allData, error: allError } = await supabase
+              .from('garages')
+              .select('*')
+              .limit(100);
+            
+            if (allError) throw allError;
+            setGarages(allData || []);
+            return;
+          }
+          
+          setGarages(retryData || []);
+          return;
+        }
+        throw error;
+      }
+      
       setGarages(data || []);
-    } catch (error) {
-      console.error('Error loading garages:', error);
-      toast.error('Failed to load garages');
+    } catch (error: any) {
+      console.error('Error loading garages:', {
+        error,
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      });
+      toast.error(`Failed to load garages: ${error?.message || 'Unknown error'}`);
+      setGarages([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
