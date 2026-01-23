@@ -33,9 +33,9 @@ if (!STRIPE_SECRET_KEY) {
   console.error('❌ STRIPE_SECRET_KEY is not set');
 }
 
-// CORS helper function - allows any origin for development, can be restricted in production
+// CORS helper function - allows specific origins
 const getCorsHeaders = (origin: string | null) => {
-  // Allow specific origins or use wildcard for development
+  // Allow specific origins
   const allowedOrigins = [
     'https://sublimes-drive-hoo.vercel.app',
     'https://app.sublimesdrive.com',
@@ -44,17 +44,31 @@ const getCorsHeaders = (origin: string | null) => {
     'http://localhost:5174',
   ];
   
-  const allowOrigin = origin && allowedOrigins.includes(origin) 
-    ? origin 
-    : origin || '*'; // Fallback to * if no origin or not in list
+  // Normalize origin (remove trailing slash, lowercase for comparison)
+  const normalizedOrigin = origin ? origin.toLowerCase().replace(/\/$/, '') : null;
+  const normalizedAllowed = allowedOrigins.map(o => o.toLowerCase().replace(/\/$/, ''));
   
-  return {
+  // Check if origin is in allowed list (case-insensitive)
+  const isAllowed = normalizedOrigin && normalizedAllowed.includes(normalizedOrigin);
+  
+  // Use origin if allowed, otherwise use the first allowed origin as fallback
+  // Never use '*' when credentials are required
+  const allowOrigin = isAllowed ? origin : (allowedOrigins[0] || '*');
+  
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-client-authorization',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-client-authorization, accept',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
     'Access-Control-Max-Age': '86400',
     'Content-Type': 'application/json',
   };
+  
+  // Only add credentials header if origin is specific (not '*')
+  if (allowOrigin !== '*') {
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+  
+  return headers;
 };
 
 serve(async (req) => {

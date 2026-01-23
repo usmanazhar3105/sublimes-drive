@@ -32,35 +32,54 @@ export const StripeCheckout: React.FC<StripeCheckoutProps> = ({
         throw new Error('Please log in to continue');
       }
 
-      // Call stripe-create-checkout Edge Function
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-create-checkout`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            itemId,
-            itemType,
-            amount,
-            currency,
-            userId: user.id,
-            successUrl: `${window.location.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancelUrl: `${window.location.origin}/payment/cancelled`
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      
+      // Determine the kind based on itemType
+      let kind: string;
+      if (itemType === 'boost') {
+        kind = 'listing_fee'; // or 'boost' if you have a specific kind for boosts
+      } else if (itemType === 'listing') {
+        kind = 'listing_fee';
+      } else {
+        kind = 'wallet_credit'; // fallback
       }
 
-      const { sessionId, url } = await response.json();
+      // Call stripe-create-checkout Edge Function using Supabase SDK (handles CORS automatically)
+      const { data, error } = await supabase.functions.invoke('stripe-create-checkout', {
+        body: {
+          kind,
+          amount: Math.round(amount * 100), // Convert to minor units (fils/cents)
+          target_id: itemId || null,
+          success_url: `${origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${origin}/payment/cancelled`,
+          metadata: {
+            item_type: itemType,
+            currency: currency,
+            description: `${itemType} payment - ${amount} ${currency}`,
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to create checkout session');
+      }
+
+      if (!data) {
+        throw new Error('No response from payment server');
+      }
 
       // Redirect to Stripe Checkout
-      window.location.href = url;
+      const checkoutUrl = data.url || data.session_url;
+      const sessionId = data.session_id || data.sessionId;
+
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else if (sessionId) {
+        // If we only have session ID, construct the URL (though this shouldn't happen)
+        throw new Error('Checkout URL not provided');
+      } else {
+        throw new Error('Invalid response from payment server');
+      }
       
       if (onSuccess) {
         onSuccess();
