@@ -11,6 +11,7 @@ type CreateCheckoutPayload = {
   success_url?: string | null;
   cancel_url?: string | null;
   metadata?: Record<string, string> | null;
+  locale?: string | null; // Stripe checkout locale (e.g., 'en', 'ar', 'auto')
 };
 
 // Environment variables with validation
@@ -53,7 +54,7 @@ const getCorsHeaders = (origin: string | null) => {
   
   // Use origin if allowed, otherwise use the first allowed origin as fallback
   // Never use '*' when credentials are required
-  const allowOrigin = isAllowed ? origin : (allowedOrigins[0] || '*');
+  const allowOrigin = isAllowed && origin ? origin : (allowedOrigins[0] || '*');
   
   const headers: Record<string, string> = {
     'Access-Control-Allow-Origin': allowOrigin,
@@ -161,6 +162,8 @@ serve(async (req) => {
     const successUrl = payload.success_url ? String(payload.success_url) : null;
     const cancelUrl = payload.cancel_url ? String(payload.cancel_url) : null;
     const metadata = payload.metadata ?? {};
+    // Use 'auto' to let Stripe detect locale, or fallback to 'en' to avoid module errors
+    const locale = payload.locale || 'auto';
 
     if (!kind) {
       return new Response(
@@ -457,6 +460,7 @@ serve(async (req) => {
         cancel_url: cancelUrl,
         metadata: sessionMetadata,
         payment_method_types: ['card'],
+        locale: locale as any, // Set locale to fix language module errors ('auto', 'en', 'ar', etc.)
       });
     } catch (stripeError: any) {
       console.error('Stripe checkout session creation error:', stripeError);
