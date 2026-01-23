@@ -97,24 +97,29 @@ export function AdminVerificationHub() {
   const fetchVerifications = async () => {
     setLoading(true);
     try {
-      // Query verification_requests table (not profiles)
-      const verificationType = activeTab === 'garage' ? 'garage' : activeTab === 'car_owner' ? 'vehicle' : 'vendor';
+      // Map tab to verification type
+      // Based on the data, verification_type uses: 'vehicle', 'garage', 'vendor'
+      let verificationType: string;
       
-      // Build query
+      if (activeTab === 'garage') {
+        verificationType = 'garage';
+      } else if (activeTab === 'car_owner') {
+        verificationType = 'vehicle';
+      } else {
+        verificationType = 'vendor';
+      }
+      
+      console.log('🔍 Fetching verifications:', {
+        activeTab,
+        verificationType,
+        statusFilter
+      });
+      
+      // Build query using verification_type column (confirmed to exist)
+      // First, get verification requests
       let query = supabase
         .from('verification_requests')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            email,
-            display_name,
-            username,
-            role,
-            system_role,
-            verification_status
-          )
-        `)
+        .select('*')
         .eq('verification_type', verificationType);
       
       // Apply status filter if not 'all'
@@ -122,36 +127,91 @@ export function AdminVerificationHub() {
         query = query.eq('status', statusFilter);
       }
       
-      const { data, error } = await query.order('submitted_at', { ascending: false });
+      const { data: verificationData, error } = await query.order('submitted_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching verifications:', error);
+        console.error('❌ Error fetching verifications:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         throw error;
       }
+      
+      console.log('✅ Fetched verification requests:', {
+        count: verificationData?.length || 0,
+        verificationType,
+        statusFilter,
+        hasData: !!verificationData,
+        data: verificationData?.slice(0, 3) // Log first 3 for debugging
+      });
 
-      // Map to expected format
-      const mappedVerifications = (data || []).map((vr: any) => ({
-        id: vr.id,
-        user_id: vr.user_id,
-        verification_type: vr.verification_type,
-        verification_status: vr.status,
-        status: vr.status,
-        data: vr.data || {},
-        documents: vr.documents || [],
-        submitted_at: vr.submitted_at || vr.created_at,
-        verification_requested_at: vr.submitted_at || vr.created_at,
-        reviewed_at: vr.reviewed_at,
-        reviewer_id: vr.reviewer_id,
-        rejection_reason: vr.rejection_reason,
-        created_at: vr.created_at,
-        updated_at: vr.updated_at,
-        // Profile data
-        email: vr.profiles?.email,
-        display_name: vr.profiles?.display_name,
-        username: vr.profiles?.username,
-        role: vr.profiles?.role,
-        system_role: vr.profiles?.system_role,
-      }));
+      // If no data but no error, log a warning
+      if (!verificationData || verificationData.length === 0) {
+        console.warn('⚠️ No verification requests found:', {
+          verificationType,
+          statusFilter,
+          activeTab,
+          'Possible causes': [
+            'RLS policies blocking access',
+            'No requests match the filter',
+            'Admin not recognized'
+          ]
+        });
+        setVerifications([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch profile data for each user_id
+      const userIds = [...new Set(verificationData.map((vr: any) => vr.user_id).filter(Boolean))];
+      let profilesMap: Record<string, any> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, email, display_name, username, role, system_role, verification_status')
+          .in('id', userIds);
+        
+        if (profilesError) {
+          console.warn('⚠️ Error fetching profiles:', profilesError);
+        } else if (profilesData) {
+          // Create a map for quick lookup
+          profilesMap = profilesData.reduce((acc: Record<string, any>, profile: any) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {});
+        }
+      }
+
+      // Map to expected format with profile data
+      const mappedVerifications = verificationData.map((vr: any) => {
+        const profile = profilesMap[vr.user_id] || {};
+        return {
+          id: vr.id,
+          user_id: vr.user_id,
+          verification_type: vr.verification_type,
+          verification_status: vr.status,
+          status: vr.status,
+          data: vr.data || {},
+          documents: vr.documents || [],
+          submitted_at: vr.submitted_at || vr.created_at,
+          verification_requested_at: vr.submitted_at || vr.created_at,
+          reviewed_at: vr.reviewed_at,
+          reviewer_id: vr.reviewer_id,
+          rejection_reason: vr.rejection_reason,
+          created_at: vr.created_at,
+          updated_at: vr.updated_at,
+          // Profile data from separate query
+          email: profile.email,
+          display_name: profile.display_name,
+          username: profile.username,
+          role: profile.role,
+          system_role: profile.system_role,
+        };
+      });
 
       setVerifications(mappedVerifications);
       

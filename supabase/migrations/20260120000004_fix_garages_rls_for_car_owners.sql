@@ -99,3 +99,5 @@ CREATE POLICY "garages_delete" ON public.garages
 
 
 
+
+
