@@ -201,15 +201,23 @@ export function useListings(filters?: {
         description: listing.description,
         price: listing.price,
         currency: listing.currency || 'AED',
-        status: listing.status || 'pending',
+        // Use 'pending' which matches the constraint (pending, active, sold)
+        status: (listing.status && ['pending', 'active', 'sold'].includes(listing.status)) 
+          ? listing.status 
+          : 'pending',
       };
 
       // Only add fields that exist and are provided
+      // Avoid fields that might have constraint violations
       if (listing.category) insertPayload.category = listing.category;
       if (listing.brand) insertPayload.brand = listing.brand;
       if (listing.model) insertPayload.model = listing.model;
-      if (listing.year) insertPayload.year = listing.year;
-      if (listing.mileage) insertPayload.mileage = listing.mileage;
+      if (listing.year && listing.year >= 1900 && listing.year <= new Date().getFullYear() + 2) {
+        insertPayload.year = listing.year;
+      }
+      if (listing.mileage && listing.mileage >= 0) {
+        insertPayload.mileage = listing.mileage;
+      }
       if (listing.city) {
         insertPayload.location = listing.city;
         insertPayload.emirate = listing.city;
@@ -218,6 +226,10 @@ export function useListings(filters?: {
       if (listing.media && Array.isArray(listing.media) && listing.media.length > 0) {
         insertPayload.images = listing.media;
       }
+      
+      // Don't set fields that might violate constraints unless we're sure of the values
+      // listing_type, car_condition, boost_package, logistics_handling are skipped
+      // to avoid constraint violations
 
       const { data, error: createError } = await supabase
         .from('marketplace_listings')

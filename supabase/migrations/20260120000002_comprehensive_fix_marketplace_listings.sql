@@ -85,7 +85,7 @@ END $$;
 -- 3. STATUS FIELD
 -- ============================================================================
 
--- status
+-- status (match existing constraint: 'pending', 'active', 'sold' and possibly more)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -94,9 +94,19 @@ BEGIN
     AND table_name = 'marketplace_listings' 
     AND column_name = 'status'
   ) THEN
+    -- Add column without constraint first (constraint may already exist on table)
     ALTER TABLE public.marketplace_listings 
-    ADD COLUMN status TEXT DEFAULT 'pending' 
-      CHECK (status IS NULL OR status IN ('draft', 'pending', 'approved', 'rejected', 'archived', 'sold', 'active', 'inactive'));
+    ADD COLUMN status TEXT DEFAULT 'pending';
+    
+    -- Only add constraint if it doesn't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint 
+      WHERE conname = 'marketplace_listings_status_check'
+    ) THEN
+      ALTER TABLE public.marketplace_listings 
+      ADD CONSTRAINT marketplace_listings_status_check 
+      CHECK (status IS NULL OR status IN ('pending', 'active', 'sold'));
+    END IF;
   END IF;
 END $$;
 
