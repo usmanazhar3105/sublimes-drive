@@ -27,3 +27,18 @@ ON public.marketplace_listings(location_country);
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

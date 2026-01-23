@@ -38,6 +38,7 @@ import { EmailTemplateManager } from './EmailTemplateManager';
 import { CreateOfferModalUpgraded } from './CreateOfferModalUpgraded';
 import { BoostPlansModal } from '../ui/BoostPlansModal';
 import { toast } from 'sonner';
+import { supabase } from '../../utils/supabase/client';
 interface Offer {
   id: string;
   title: string;
@@ -332,31 +333,101 @@ export function AdminOffersPageFixed() {
     return `${prefix}-${timestamp}-${random}`;
   };
 
-  const handleCreateOffer = (offerData: any) => {
+  const handleCreateOffer = async (offerData: any) => {
     try {
-      // Generate unique ID for the new offer
-      const newOffer: Offer = {
-        id: `offer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        ...offerData,
-        images: [], // Handle images properly in a real implementation
-        currentRedemptions: 0,
-        isActive: true,
-        isFeatured: false,
-        isBoosted: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to create offers');
+        return;
+      }
+
+      // Validate required fields and handle NaN
+      if (!offerData.title || !offerData.description) {
+        toast.error('Title and description are required');
+        return;
+      }
+
+      // Ensure prices are valid numbers (not NaN)
+      const originalPrice = offerData.originalPrice && !isNaN(offerData.originalPrice) 
+        ? parseFloat(offerData.originalPrice) 
+        : null;
+      const offerPrice = offerData.offerPrice && !isNaN(offerData.offerPrice)
+        ? parseFloat(offerData.offerPrice)
+        : null;
+
+      if (!originalPrice || !offerPrice || originalPrice <= 0 || offerPrice <= 0) {
+        toast.error('Valid original price and offer price are required');
+        return;
+      }
+
+      if (offerPrice >= originalPrice) {
+        toast.error('Offer price must be less than original price');
+        return;
+      }
+
+      // Calculate discount percentage
+      const discountPercentage = Math.round(((originalPrice - offerPrice) / originalPrice) * 100);
+
+      // Prepare offer data for database
+      const offerInsert = {
+        title: offerData.title,
+        description: offerData.description,
+        category: offerData.category || null,
+        original_price: originalPrice,
+        offer_price: offerPrice,
+        discount_percentage: discountPercentage,
+        valid_from: offerData.validFrom ? new Date(offerData.validFrom).toISOString() : null,
+        valid_until: offerData.validUntil ? new Date(offerData.validUntil).toISOString() : null,
+        max_redemptions: offerData.maxRedemptions ? parseInt(offerData.maxRedemptions) || 100 : 100,
+        current_redemptions: 0,
+        images: offerData.images || [],
+        availability: offerData.availability || {},
+        categories: offerData.categories || [],
+        is_active: true,
+        is_featured: false,
+        created_by: user.id,
+        user_id: user.id, // For RLS
       };
 
-      // Add the new offer to the offers list
+      // Insert into database
+      const { data, error } = await supabase
+        .from('offers')
+        .insert(offerInsert)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating offer:', error);
+        toast.error('Failed to create offer: ' + (error.message || 'Unknown error'));
+        return;
+      }
+
+      // Add to local state
+      const newOffer: Offer = {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        category: data.category || '',
+        originalPrice: parseFloat(data.original_price),
+        offerPrice: parseFloat(data.offer_price),
+        discountPercentage: parseFloat(data.discount_percentage),
+        validFrom: new Date(data.valid_from),
+        validUntil: new Date(data.valid_until),
+        currentRedemptions: data.current_redemptions || 0,
+        isActive: data.is_active,
+        isFeatured: data.is_featured,
+        isBoosted: false,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+
       setOffers(prevOffers => [newOffer, ...prevOffers]);
+      toast.success('✅ Offer created successfully!');
       
-      toast.success('✅ Offer created successfully and added to the list!');
-      console.log('New offer created:', newOffer);
-      
-      // You can add logic here to save the offer to your backend/database
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating offer:', error);
-      toast.error('Failed to create offer. Please try again.');
+      toast.error('Failed to create offer: ' + (error.message || 'Unknown error'));
     }
   };
 

@@ -44,16 +44,30 @@ const supabase = createClient(
 
 interface VerificationRequest {
   id: string;
-  display_name: string;
-  email: string;
-  phone: string | null;
-  sub_role: 'car_owner' | 'garage_owner' | 'vendor';
-  verification_status: 'pending' | 'approved' | 'rejected' | 'reupload_requested';
-  verification_documents: any[];
-  verification_notes: string | null;
-  verification_requested_at: string;
-  badge_color: string;
+  user_id: string;
+  verification_type: 'vehicle' | 'garage' | 'vendor';
+  status: 'pending' | 'approved' | 'rejected' | 'reupload_requested';
+  verification_status: 'pending' | 'approved' | 'rejected' | 'reupload_requested'; // Alias for status
+  data: any;
+  documents: string[];
+  submitted_at: string;
+  verification_requested_at: string; // Alias for submitted_at
+  reviewed_at: string | null;
+  reviewer_id: string | null;
+  rejection_reason: string | null;
   created_at: string;
+  updated_at: string;
+  // Profile data (from join)
+  display_name?: string;
+  email?: string;
+  username?: string;
+  phone?: string | null;
+  role?: string;
+  system_role?: string;
+  verification_documents?: any[];
+  verification_notes?: string | null;
+  badge_color?: string;
+  sub_role?: 'car_owner' | 'garage_owner' | 'vendor';
 }
 
 export function AdminVerificationHub() {
@@ -79,39 +93,86 @@ export function AdminVerificationHub() {
     reupload_requested: 0
   });
 
-  // Fetch verifications
+  // Fetch verifications from verification_requests table
   const fetchVerifications = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('sub_role', activeTab === 'garage' ? 'garage_owner' : activeTab === 'car_owner' ? 'car_owner' : 'vendor')
-        .eq('verification_status', statusFilter)
-        .order('verification_requested_at', { ascending: false });
-
-      if (error) throw error;
-
-      setVerifications(data || []);
+      // Query verification_requests table (not profiles)
+      const verificationType = activeTab === 'garage' ? 'garage' : activeTab === 'car_owner' ? 'vehicle' : 'vendor';
       
-      // Calculate stats
+      // Build query
+      let query = supabase
+        .from('verification_requests')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            email,
+            display_name,
+            username,
+            role,
+            system_role,
+            verification_status
+          )
+        `)
+        .eq('verification_type', verificationType);
+      
+      // Apply status filter if not 'all'
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+      
+      const { data, error } = await query.order('submitted_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching verifications:', error);
+        throw error;
+      }
+
+      // Map to expected format
+      const mappedVerifications = (data || []).map((vr: any) => ({
+        id: vr.id,
+        user_id: vr.user_id,
+        verification_type: vr.verification_type,
+        verification_status: vr.status,
+        status: vr.status,
+        data: vr.data || {},
+        documents: vr.documents || [],
+        submitted_at: vr.submitted_at || vr.created_at,
+        verification_requested_at: vr.submitted_at || vr.created_at,
+        reviewed_at: vr.reviewed_at,
+        reviewer_id: vr.reviewer_id,
+        rejection_reason: vr.rejection_reason,
+        created_at: vr.created_at,
+        updated_at: vr.updated_at,
+        // Profile data
+        email: vr.profiles?.email,
+        display_name: vr.profiles?.display_name,
+        username: vr.profiles?.username,
+        role: vr.profiles?.role,
+        system_role: vr.profiles?.system_role,
+      }));
+
+      setVerifications(mappedVerifications);
+      
+      // Calculate stats from all verification requests
       const { data: allData } = await supabase
-        .from('profiles')
-        .select('verification_status')
-        .eq('sub_role', activeTab === 'garage' ? 'garage_owner' : activeTab === 'car_owner' ? 'car_owner' : 'vendor');
+        .from('verification_requests')
+        .select('status, verification_type')
+        .eq('verification_type', verificationType);
 
       if (allData) {
         const newStats = {
-          pending: allData.filter(v => v.verification_status === 'pending').length,
-          approved: allData.filter(v => v.verification_status === 'approved').length,
-          rejected: allData.filter(v => v.verification_status === 'rejected').length,
-          reupload_requested: allData.filter(v => v.verification_status === 'reupload_requested').length,
+          pending: allData.filter(v => v.status === 'pending').length,
+          approved: allData.filter(v => v.status === 'approved').length,
+          rejected: allData.filter(v => v.status === 'rejected').length,
+          reupload_requested: allData.filter(v => v.status === 'reupload_requested').length,
         };
         setStats(newStats);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching verifications:', error);
-      toast.error('Failed to load verifications');
+      toast.error('Failed to load verifications: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
