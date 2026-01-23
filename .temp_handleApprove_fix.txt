@@ -1,0 +1,35 @@
+  const handleApprove = async (verification: Verification) => {
+    console.log('Starting approval (RPC) for:', verification);
+    setLoading(true);
+    try {
+      const isSynthetic = verification.id.startsWith('synthetic-');
+
+      if (isSynthetic) {
+         toast.error("Cannot approve synthetic profiles directly yet");
+         setLoading(false);
+         return;
+      }
+
+      // CALL THE NEW RPC
+      const { data, error } = await supabase.rpc('approve_verification_request', {
+        p_request_id: verification.id,
+        p_admin_notes: actionNotes
+      });
+
+      console.log('RPC Result:', { data, error });
+
+      if (error) throw error;
+      if (data && !data.success) {
+        throw new Error(data.error || 'Unknown RPC error');
+      }
+
+      toast.success('Approved successfully');
+      setDetailsOpen(false);
+      fetchVerifications();
+    } catch (error: any) {
+      console.error('Error approving:', error);
+      toast.error('Failed to approve: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };

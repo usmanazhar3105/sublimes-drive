@@ -3,7 +3,7 @@
  * 
  * Production-proven profile creation function.
  * Ensures ONLY id is sent - no role field (even undefined/null).
- * Database assigns DEFAULT role (subscriber).
+ * Database assigns DEFAULT role (browser).
  * 
  * @module lib/profileUtils
  */
@@ -40,7 +40,7 @@ export async function createProfileIfNotExists(userId: string) {
 
     // Only try to insert if profile doesn't exist
     // CRITICAL: Only id field - NO role, NO other fields
-    // Database DEFAULT will assign role = 'subscriber'
+    // Database DEFAULT will assign role = 'browser'
     const { data, error } = await supabase
       .from('profiles')
       .insert({ id: userId })
@@ -56,15 +56,15 @@ export async function createProfileIfNotExists(userId: string) {
           .select('id, role')
           .eq('id', userId)
           .maybeSingle();
-        
+
         if (fetchError) {
           // Silently fail - DB trigger will handle it
           return { data: null, error: null };
         }
-        
+
         return { data: fetchedProfile, error: null };
       }
-      
+
       // RLS or other errors - silently fail (DB trigger will create profile)
       // Don't log RLS errors as they're expected
       if (!error.message?.includes('policy') && !error.message?.includes('permission')) {

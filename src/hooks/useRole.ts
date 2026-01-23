@@ -53,7 +53,7 @@ export function useRole() {
       }
     } catch (err) {
       // Silently fail - set default role
-      setRole('subscriber');
+      setRole('browser');
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export function useRole() {
         }
         // Set default subscriber role for UI to work
         // DB trigger will create profile eventually
-        setRole('subscriber');
+        setRole('browser');
         setIsAdmin(false);
         setIsGarageOwner(false);
       } else if (newProfile) {
@@ -84,11 +84,11 @@ export function useRole() {
         setIsGarageOwner(newProfile.role === 'garage_owner');
       } else {
         // Fallback - wait for DB trigger to create profile
-        setRole('subscriber');
+        setRole('browser');
       }
     } catch (err) {
       // Silently fail - DB trigger will handle profile creation
-      setRole('subscriber');
+      setRole('browser');
     }
   };
 

@@ -68,6 +68,7 @@ interface Verification {
   kind?: string;
   verification_type?: string;
   data?: any; // For flexible JSON data
+  documents?: string[]; // Array of document URLs
 }
 
 export function AdminVerificationUnified() {
@@ -128,31 +129,8 @@ export function AdminVerificationUnified() {
         });
       });
 
-      // Add orphan profiles as synthetic requests only if they don't have a real request
-      const requestUserIds = new Set(requests?.map(r => r.user_id));
-
-      pendingProfiles?.forEach(p => {
-        if (!requestUserIds.has(p.id)) {
-          // Determine implied kind from sub_role or role
-          let impliedKind = 'car_owner'; // Default to car_owner for Subscribers or unknown
-
-          if (p.sub_role === 'garage_owner' || p.role === 'garage_owner') impliedKind = 'garage_owner';
-          else if (p.sub_role === 'vendor' || p.role === 'vendor') impliedKind = 'vendor';
-          // Explicitly check if they are ALREADY a car owner, otherwise they stay as default car_owner aspirant
-          else if (p.sub_role === 'car_owner' || p.role === 'car_owner') impliedKind = 'car_owner';
-
-          allItems.push({
-            id: `synthetic-${p.id}`,
-            user_id: p.id,
-            status: 'pending',
-            created_at: p.updated_at || p.created_at,
-            updated_at: p.updated_at || p.created_at,
-            kind: impliedKind,
-            verification_type: impliedKind === 'car_owner' ? 'vehicle' : 'business',
-            profiles: p
-          });
-        }
-      });
+      // Note: We removed the "synthetic" profile logic
+      // Only users who actually submitted verification requests will appear
 
       // 5. Filter for Current Tab
       const filterForTab = (item: Verification) => {
@@ -186,50 +164,36 @@ export function AdminVerificationUnified() {
   };
 
   const handleApprove = async (verification: Verification) => {
+    console.log('Starting approval (RPC) for:', verification);
     setLoading(true);
     try {
       const isSynthetic = verification.id.startsWith('synthetic-');
 
-      // 1. Update request status (if real)
-      if (!isSynthetic) {
-        const { error } = await supabase
-          .from('verification_requests')
-          .update({
-            status: 'approved',
-            admin_notes: actionNotes,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', verification.id);
-
-        if (error) throw error;
+      if (isSynthetic) {
+        toast.error("Cannot approve synthetic profiles directly yet");
+        setLoading(false);
+        return;
       }
 
-      // 2. Update user profile role
-      let newRole = '';
-      if (activeTab === 'car_owner') newRole = 'car_owner';
-      else if (activeTab === 'garage') newRole = 'garage_owner';
-      else if (activeTab === 'vendor') newRole = 'vendor';
+      // CALL THE NEW RPC
+      const { data, error } = await supabase.rpc('approve_verification_request', {
+        p_request_id: verification.id,
+        p_admin_notes: actionNotes
+      });
 
-      if (newRole) {
-        await supabase
-          .from('profiles')
-          .update({
-            role: newRole,
-            sub_role: newRole,
-            verification_status: 'approved',
-            is_verified: true,
-            verified_at: new Date().toISOString()
-          })
-          .eq('id', verification.user_id);
+      console.log('RPC Result:', { data, error });
+
+      if (error) throw error;
+      if (data && !data.success) {
+        throw new Error(data.error || 'Unknown RPC error');
       }
 
-      await logAudit('approve_verification', 'verification_requests', verification.id, true);
       toast.success('Approved successfully');
       setDetailsOpen(false);
       fetchVerifications();
     } catch (error: any) {
       console.error('Error approving:', error);
-      toast.error('Failed to approve');
+      toast.error('Failed to approve: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -278,9 +242,13 @@ export function AdminVerificationUnified() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from('audit_logs').insert({
-        user_id: user.id, action, entity, entity_id: entityId, success,
-        metadata: { notes: actionNotes }, created_at: new Date().toISOString()
+      await supabase.from('admin_logs').insert({
+        admin_id: user.id,
+        action,
+        target_type: entity,
+        target_id: entityId,
+        metadata: { notes: actionNotes, success },
+        created_at: new Date().toISOString()
       });
     } catch (e) { console.error('Audit log error', e); }
   };
@@ -412,16 +380,12 @@ export function AdminVerificationUnified() {
                   <h3 className="text-sm text-gray-400 mb-2">Documents</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(() => {
-                      const docs = [];
+                      const docs: { label: string; url: string }[] = [];
                       const data = selectedVerification.data || {};
 
-                      // Garage Documents
-                      if (data.trade_license_url || selectedVerification.trade_license) {
-                        docs.push({ label: 'Trade License', url: data.trade_license_url || selectedVerification.trade_license });
-                      }
-                      if (data.utility_bill_url) {
-                        docs.push({ label: 'Utility Bill', url: data.utility_bill_url });
-                      }
+                      // DEBUG: Log the data to see what we have
+                      console.log('Verification data:', data);
+                      console.log('Documents array:', selectedVerification.documents);
 
                       // Car Owner Documents
                       if (data.vehicle_registration_url || selectedVerification.vehicle_registration) {
@@ -429,6 +393,14 @@ export function AdminVerificationUnified() {
                       }
                       if (data.ownership_proof_url || selectedVerification.ownership_proof) {
                         docs.push({ label: 'Ownership Proof', url: data.ownership_proof_url || selectedVerification.ownership_proof });
+                      }
+
+                      // Garage Documents
+                      if (data.trade_license_url || selectedVerification.trade_license) {
+                        docs.push({ label: 'Trade License', url: data.trade_license_url || selectedVerification.trade_license });
+                      }
+                      if (data.utility_bill_url) {
+                        docs.push({ label: 'Utility Bill', url: data.utility_bill_url });
                       }
 
                       // Vendor Documents
@@ -448,6 +420,17 @@ export function AdminVerificationUnified() {
                           }
                         }
                       });
+
+                      // Fallback: Use documents array if no docs found in data
+                      if (docs.length === 0 && selectedVerification.documents && selectedVerification.documents.length > 0) {
+                        selectedVerification.documents.forEach((url: string, idx: number) => {
+                          if (url && url.startsWith('http')) {
+                            docs.push({ label: `Document ${idx + 1}`, url });
+                          }
+                        });
+                      }
+
+                      console.log('Final docs array:', docs);
 
                       if (docs.length === 0) return <p className="text-sm text-gray-500 italic">No documents attached.</p>;
 

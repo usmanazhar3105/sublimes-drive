@@ -95,3 +95,5 @@ deployment-package.zip
 *.p12
 *.pfx
 *.jks
+
+allkeys.txt

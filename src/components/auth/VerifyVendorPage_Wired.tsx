@@ -70,9 +70,10 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
     try {
       setCheckingStatus(true);
       const { data, error } = await supabase
-        .from('vendor_verifications')
+        .from('verification_requests')
         .select('*')
         .eq('user_id', profile.id)
+        .eq('verification_type', 'vendor')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
@@ -84,19 +85,20 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
       if (data) {
         setExistingVerification(data);
         // Pre-fill form with existing data if status is not verified
-        if (data.status !== 'verified') {
+        if (data.status !== 'approved') {
+          const formDataFromDb = data.data || {};
           setFormData({
-            businessName: data.business_name || '',
-            businessType: data.business_type || '',
-            tradeLicenseNumber: data.trade_license_number || '',
-            location: data.location || '',
-            emirate: data.emirate || '',
-            businessPhone: data.business_phone || '',
-            businessEmail: data.business_email || '',
-            businessAddress: data.business_address || '',
-            tradeLicenseUrl: data.trade_license_url || '',
-            taxCertificateUrl: data.tax_certificate_url || '',
-            businessPhotosUrls: data.business_photos_urls || []
+            businessName: formDataFromDb.business_name || '',
+            businessType: formDataFromDb.business_type || '',
+            tradeLicenseNumber: formDataFromDb.trade_license_number || '',
+            location: formDataFromDb.location || '',
+            emirate: formDataFromDb.emirate || '',
+            businessPhone: formDataFromDb.business_phone || '',
+            businessEmail: formDataFromDb.business_email || '',
+            businessAddress: formDataFromDb.business_address || '',
+            tradeLicenseUrl: formDataFromDb.trade_license_url || '',
+            taxCertificateUrl: formDataFromDb.tax_certificate_url || '',
+            businessPhotosUrls: formDataFromDb.business_photos_urls || []
           });
         }
       }
@@ -157,32 +159,36 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
 
       const verificationData = {
         user_id: profile.id,
-        business_name: formData.businessName,
-        business_type: formData.businessType,
-        trade_license_number: formData.tradeLicenseNumber,
-        location: formData.location,
-        emirate: formData.emirate,
-        business_phone: formData.businessPhone,
-        business_email: formData.businessEmail,
-        business_address: formData.businessAddress,
-        trade_license_url: formData.tradeLicenseUrl,
-        tax_certificate_url: formData.taxCertificateUrl,
-        business_photos_urls: formData.businessPhotosUrls,
-        status: 'pending'
+        verification_type: 'vendor',
+        status: 'pending',
+        data: {
+          business_name: formData.businessName,
+          business_type: formData.businessType,
+          trade_license_number: formData.tradeLicenseNumber,
+          location: formData.location,
+          emirate: formData.emirate,
+          business_phone: formData.businessPhone,
+          business_email: formData.businessEmail,
+          business_address: formData.businessAddress,
+          trade_license_url: formData.tradeLicenseUrl,
+          tax_certificate_url: formData.taxCertificateUrl,
+          business_photos_urls: formData.businessPhotosUrls
+        },
+        documents: [formData.tradeLicenseUrl, formData.taxCertificateUrl].filter(Boolean)
       };
 
       let error;
       if (existingVerification?.id) {
         // Update existing verification
         const result = await supabase
-          .from('vendor_verifications')
+          .from('verification_requests')
           .update(verificationData)
           .eq('id', existingVerification.id);
         error = result.error;
       } else {
         // Create new verification
         const result = await supabase
-          .from('vendor_verifications')
+          .from('verification_requests')
           .insert([verificationData]);
         error = result.error;
       }
@@ -242,8 +248,8 @@ export function VerifyVendorPage_Wired({ onNavigate, onBack }: VerifyVendorPageP
     );
   }
 
-  // Show status if already verified
-  if (existingVerification?.status === 'verified') {
+  // Show status if already approved
+  if (existingVerification?.status === 'approved') {
     return (
       <div className="min-h-screen bg-[#0B1426] py-8 px-4">
         <div className="max-w-2xl mx-auto">

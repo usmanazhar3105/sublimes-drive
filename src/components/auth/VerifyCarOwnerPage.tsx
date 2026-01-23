@@ -85,17 +85,12 @@ export function VerifyCarOwnerPage({ onNavigate }: VerifyCarOwnerPageProps) {
         .insert({
           user_id: user.id,
           verification_type: 'vehicle',
-          kind: 'car_owner',
           status: 'pending',
-          admin_notes: '',
           data: {
             ...formData,
             vehicle_registration_url: fileUrls.registration,
             ownership_proof_url: fileUrls.ownership
           },
-          registration_number: formData.plateNumber,
-          vehicle_registration: fileUrls.registration, // explicit columns if schema supports
-          ownership_proof: fileUrls.ownership,
           documents: [fileUrls.registration, fileUrls.ownership].filter(Boolean)
         });
 
